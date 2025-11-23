@@ -1,7 +1,7 @@
 # Magic uses method_missing and an llm to return 
 # the result of any method you can think of.
 
-# standard library ONLY
+# standard library ONLY!
 require 'net/http'
 require 'json'
 require 'uri'
@@ -61,49 +61,46 @@ class OpenAIClient
       body: response.body
     }
   end
-end
+# end
 
-# Example usage:
-client = OpenAIClient.new
-result = client.create_response(
-  model: 'gpt-5.1',
-  input: 'Write a short bedtime story about a unicorn.',
-  max_output_tokens: 1000,
-  temperature: 0.7
-)
+# # Example usage:
+# client = OpenAIClient.new
+# result = client.create_response(
+#   model: 'gpt-5.1',
+#   input: 'Write a short bedtime story about a unicorn.',
+#   max_output_tokens: 1000,
+#   temperature: 0.7
+# )
 
-if result[:status] == "200"
-  body = result[:body]
+# if result[:status] == "200"
+#   body = result[:body]
   
-  # Extract the text from the response
-  text = body.dig("output", 0, "content", 0, "text")
+#   # Extract the text from the response
+#   text = body.dig("output", 0, "content", 0, "text")
   
-  # Extract usage information
-  usage = body["usage"]
-  input_tokens = usage["input_tokens"]
-  output_tokens = usage["output_tokens"]
-  total_tokens = usage["total_tokens"]
+#   # Extract usage information
+#   usage = body["usage"]
+#   input_tokens = usage["input_tokens"]
+#   output_tokens = usage["output_tokens"]
+#   total_tokens = usage["total_tokens"]
   
-  # Print formatted output
-  puts "\n" + "="*80
-  puts "RESPONSE:"
-  puts "="*80
-  puts text
-  puts "\n" + "="*80
-  puts "TOKENS USED:"
-  puts "="*80
-  puts "  Input:  #{input_tokens}"
-  puts "  Output: #{output_tokens}"
-  puts "  Total:  #{total_tokens}"
-  puts "="*80 + "\n"
-else
-  puts "Error: Status #{result[:status]}"
-  puts result[:body]
-end
+#   # Print formatted output
+#   puts "\n" + "="*80
+#   puts "RESPONSE:"
+#   puts "="*80
+#   puts text
+#   puts "\n" + "="*80
+#   puts "TOKENS USED:"
+#   puts "="*80
+#   puts "  Input:  #{input_tokens}"
+#   puts "  Output: #{output_tokens}"
+#   puts "  Total:  #{total_tokens}"
+#   puts "="*80 + "\n"
+# else
+#   puts "Error: Status #{result[:status]}"
+#   puts result[:body]
+# end
 
 
 magic = Magic.new
-puts magic.hello(1, 2, 3)
-puts magic.world("foo", "bar")
-puts magic.foobar(1, 2, 3) { "baz" }
-
+magic.get_stock_price('GOOGL', as_of_date: '2025-11-20')
