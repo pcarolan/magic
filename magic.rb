@@ -144,5 +144,8 @@ class OpenAIClient
 end
 
 magic = Magic.new
-result = magic.random_number(0..10).multiply_by(5).add(10)
+result = result = magic.list_us_presidents
+    .take_first(5)
+    .get_birthplaces
+    .find_common_state
 puts result

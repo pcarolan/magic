@@ -108,11 +108,92 @@ puts "Full chain inspect: #{step3.inspect}"
 - Access raw result via `.result` method
 - View chain history via `.inspect` method
 
-...
-
 ### Recursion
 
-...
+Magic supports recursive operations through its context-aware chaining. Each method call receives the previous result as context, enabling the LLM to reason recursively about nested data structures.
+
+#### Example 1: Recursive Data Processing
+
+```ruby
+# Start with a list and recursively process it
+result = magic.list_us_presidents
+  .take_first(5)
+  .get_birthplaces
+  .find_common_state
+
+# Each step:
+# 1. list_us_presidents → Returns list of presidents
+# 2. take_first(5) → Takes first 5 (receives previous list as context)
+# 3. get_birthplaces → Extracts birthplaces (receives filtered list)
+# 4. find_common_state → Finds most common state (receives birthplace data)
+
+puts result
+# => {"most_common_state": "Virginia", "count": 8}
+```
+
+#### Example 2: Nested Object Navigation
+
+```ruby
+# Navigate through nested data structures recursively
+result = magic.countries_in('Europe')
+  .get_details('France')
+  .largest_city
+  .population
+
+# The LLM recursively drills down:
+# Europe → France → Paris → Population
+puts result
+# => {"city": "Paris", "population": 2165423}
+```
+
+#### Example 3: Recursive Computation
+
+```ruby
+# Mathematical recursion through chaining
+result = magic.factorial(5)
+  .multiply_by(2)
+  .add(10)
+
+# 5! = 120 → 120 * 2 = 240 → 240 + 10 = 250
+puts result
+# => {"result": 250}
+```
+
+#### Example 4: Self-Referential Operations
+
+```ruby
+# Each call can reference its own previous result
+result = magic.number(10)
+  .double_it      # 10 * 2 = 20
+  .add_previous   # 20 + 10 = 30 (LLM can reference original)
+  .square         # 30^2 = 900
+
+puts result
+# => {"result": 900}
+```
+
+#### How Recursion Works
+
+Magic's recursion differs from traditional function recursion:
+
+1. **Context Passing**: Each chained call receives the previous result in the prompt:
+
+   ```ruby
+   # Previous result is automatically included
+   "Previous result: {previous_value}"
+   ```
+
+2. **Chain History**: The `@history` array maintains a complete audit trail of all operations
+
+3. **LLM Reasoning**: The LLM can recursively reason about nested structures since it has access to context
+
+4. **Sequential Execution**: Unlike traditional recursion (function calling itself), Magic's recursion is:
+   - **Sequential**: Each step executes and passes results forward
+   - **Context-aware**: The LLM has access to previous results
+   - **Implicit**: You don't write recursive functions; chaining creates recursive behavior
+   - **LLM-powered**: Intelligence comes from the LLM understanding nested structures
+
+This makes Magic particularly powerful for exploratory data navigation where you don't know the exact structure ahead of time!
 
 ## References
 
