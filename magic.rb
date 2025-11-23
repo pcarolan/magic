@@ -32,7 +32,7 @@ class Magic
   def send_to_openai(input:)
     # Send the input to the openai api
     # and return the response
-    prompt = MAIN_PROMPT + "\n" + input.to_s
+    prompt = MAIN_PROMPT + "\n" + input.to_json
     puts prompt if ENV['DEBUG']
     response = OpenAIClient.new.create_response(
       model: 'gpt-5.1',
@@ -97,3 +97,7 @@ class OpenAIClient
     }
   end
 end
+
+magic = Magic.new
+result = magic.places_to_eat_in('petoskey')
+puts result
