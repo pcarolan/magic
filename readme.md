@@ -4,12 +4,14 @@
 
 1. Set `OPENAI_API_KEY` to a valid openai key
 2. Install ruby `>= ruby 3.3.4`
+3. Run tests `ruby test_magic.rb` to make sure everything's working properly
 
 ## About
 
-- Magic let's us call any function you can imagine.
+- Magic let's us call any function and get a pretty good answer.
 - Magic methods can be chained together.
 - If the method is called without a name it becomes anonymous.
+- Magic methods are recursive
 
 ## Try it
 
@@ -43,6 +45,24 @@ magic.types_of_cheese_in_geo('france')
 ```
 
 ### Method Chaining
+
+Magic enables method chaining a la ruby style
+
+Usage:
+
+```ruby
+magic.weather_in('Paris').current_temperature
+# => {"city":"Paris","current_temperature_celsius":18}
+
+magic.us_presidents.first.birthplace
+# => {"president":"George Washington","birthplace":"Westmoreland County, Virginia"}
+
+magic.math.add(40, 2)
+# => {"result":42}
+
+magic.types_of_cheese_in_geo('europe').first.upcase
+# => "CHEDDAR"
+```
 
 ...
 

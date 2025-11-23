@@ -33,13 +33,18 @@ class Magic
     # Send the input to the openai api
     # and return the response
     prompt = MAIN_PROMPT + "\n" + input.to_s
-    puts prompt
-    OpenAIClient.new.create_response(
+    puts prompt if ENV['DEBUG']
+    response = OpenAIClient.new.create_response(
       model: 'gpt-5.1',
       input: prompt,
       max_output_tokens: 1000,
       temperature: 0.7
-    ).dig(:body, 'output', 0, 'content', 0, 'text')
+    )
+    
+    # Handle error responses where body is a String, not a Hash
+    return nil unless response[:body].is_a?(Hash)
+    
+    response.dig(:body, 'output', 0, 'content', 0, 'text')
   end
 
 end
