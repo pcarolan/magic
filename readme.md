@@ -108,20 +108,20 @@ puts "Full chain inspect: #{step3.inspect}"
 - Access raw result via `.result` method
 - View chain history via `.inspect` method
 
-### Recursion
+### Pipeline Processing & Nested Data Navigation
 
-Magic supports recursive operations through its context-aware chaining. Each method call receives the previous result as context, enabling the LLM to reason recursively about nested data structures.
+Magic enables powerful data transformation pipelines through its context-aware chaining. While not recursion in the traditional computer science sense (where a function calls itself), Magic's chaining allows for sequential transformations where each step receives context from previous operations.
 
-#### Example 1: Recursive Data Processing
+#### Example 1: Data Pipeline Processing
 
 ```ruby
-# Start with a list and recursively process it
+# Transform data through multiple steps
 result = magic.list_us_presidents
   .take_first(5)
   .get_birthplaces
   .find_common_state
 
-# Each step:
+# Each step in the pipeline:
 # 1. list_us_presidents → Returns list of presidents
 # 2. take_first(5) → Takes first 5 (receives previous list as context)
 # 3. get_birthplaces → Extracts birthplaces (receives filtered list)
@@ -134,47 +134,47 @@ puts result
 #### Example 2: Nested Object Navigation
 
 ```ruby
-# Navigate through nested data structures recursively
+# Drill down through nested data structures
 result = magic.countries_in('Europe')
   .get_details('France')
   .largest_city
   .population
 
-# The LLM recursively drills down:
+# Navigation path:
 # Europe → France → Paris → Population
 puts result
 # => {"city": "Paris", "population": 2165423}
 ```
 
-#### Example 3: Recursive Computation
+#### Example 3: Computational Pipelines
 
 ```ruby
-# Mathematical recursion through chaining
+# Chain mathematical operations
 result = magic.factorial(5)
   .multiply_by(2)
   .add(10)
 
-# 5! = 120 → 120 * 2 = 240 → 240 + 10 = 250
+# Transformation flow: 5! = 120 → 120 * 2 = 240 → 240 + 10 = 250
 puts result
 # => {"result": 250}
 ```
 
-#### Example 4: Self-Referential Operations
+#### Example 4: Context-Aware Operations
 
 ```ruby
-# Each call can reference its own previous result
+# Operations that can reference previous context
 result = magic.number(10)
   .double_it      # 10 * 2 = 20
-  .add_previous   # 20 + 10 = 30 (LLM can reference original)
+  .add_previous   # 20 + 10 = 30 (LLM can access original context)
   .square         # 30^2 = 900
 
 puts result
 # => {"result": 900}
 ```
 
-#### How Recursion Works
+#### How It Works
 
-Magic's recursion differs from traditional function recursion:
+Magic's pipeline processing uses sequential execution with context passing:
 
 1. **Context Passing**: Each chained call receives the previous result in the prompt:
 
@@ -185,15 +185,17 @@ Magic's recursion differs from traditional function recursion:
 
 2. **Chain History**: The `@history` array maintains a complete audit trail of all operations
 
-3. **LLM Reasoning**: The LLM can recursively reason about nested structures since it has access to context
+3. **LLM Reasoning**: The LLM can reason about nested structures and relationships since it has access to full context
 
-4. **Sequential Execution**: Unlike traditional recursion (function calling itself), Magic's recursion is:
-   - **Sequential**: Each step executes and passes results forward
-   - **Context-aware**: The LLM has access to previous results
-   - **Implicit**: You don't write recursive functions; chaining creates recursive behavior
-   - **LLM-powered**: Intelligence comes from the LLM understanding nested structures
+4. **Sequential Execution**: Each step:
+   - **Executes independently**: Makes its own API call
+   - **Receives context**: Gets previous result as input
+   - **Passes forward**: Sends result to next step
+   - **LLM-powered**: Intelligence comes from the LLM understanding data relationships
 
-This makes Magic particularly powerful for exploratory data navigation where you don't know the exact structure ahead of time!
+#### Note on "Recursion"
+
+This is **not traditional recursion** (where a function calls itself). It's **sequential chaining** and **pipeline processing**. However, the LLM may internally use recursive reasoning to understand nested data structures, which is why this pattern is powerful for exploratory data navigation where you don't know the exact structure ahead of time!
 
 ## References
 

@@ -33,6 +33,13 @@ class Magic
       block: block
     })
     
+    # Print thinking step (intermediate result) in debug mode
+    if ENV['DEBUG']
+      step_number = @history.length + 1
+      puts "\n🔮 Step #{step_number}: #{method}#{args.empty? ? '' : "(#{args.map(&:inspect).join(', ')})"}"
+      puts "   → #{result.inspect}"
+    end
+    
     # Build new history entry
     new_history = @history + [{
       method: method,
