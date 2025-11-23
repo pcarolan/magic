@@ -20,7 +20,7 @@ class OpenAIClient
     @api_key = api_key
   end
 
-  def create_response(model:, input:)
+  def create_response(model:, input:, max_output_tokens: nil, temperature: nil)
     uri = URI('https://api.openai.com/v1/responses')
     
     # Create the HTTP object
@@ -37,11 +37,16 @@ class OpenAIClient
     request['Content-Type'] = 'application/json'
     request['Authorization'] = "Bearer #{@api_key}"
     
-    # Set the request body
-    request.body = JSON.generate({
+    # Build request body
+    body = {
       model: model,
       input: input
-    })
+    }
+    body[:max_output_tokens] = max_output_tokens if max_output_tokens
+    body[:temperature] = temperature if temperature
+    
+    # Set the request body
+    request.body = JSON.generate(body)
     
     # Make the request
     response = http.request(request)
@@ -62,7 +67,9 @@ end
 client = OpenAIClient.new
 result = client.create_response(
   model: 'gpt-5.1',
-  input: 'Write a short bedtime story about a unicorn.'
+  input: 'Write a short bedtime story about a unicorn.',
+  max_output_tokens: 1000,
+  temperature: 0.7
 )
 
 if result[:status] == "200"
