@@ -11,7 +11,21 @@
 - Magic methods can be chained together.
 - If the method is called without a name it becomes anonymous.
 
-Examples:
+## Try it
+
+```bash
+> irb
+irb(main):002> require_relative 'magic'
+=> true
+irb(main):003> magic = Magic.new
+=> #<Magic:0x00000001204c8a30>
+irb(main):004> magic.name_of_us_president_in_year('1994')
+=> "{\"answer\":\"Bill Clinton\"}"
+```
+
+## Examples
+
+### Single Method Calls
 
 ```ruby
 magic.state_capital('Michigan', 'USA')
@@ -25,52 +39,17 @@ magic.types_of_cheese_in_geo('world')
 
 magic.types_of_cheese_in_geo('france')
 # => {"country":"france","types_of_cheese":["Brie","Camembert","Roquefort","Comté","Reblochon","Munster","Pont-l’Évêque","Bleu d’Auvergne","Cantal","Saint-Nectaire","Tomme de Savoie","Chèvre (various goat cheeses such as Crottin de Chavignol, Valençay, Sainte-Maure de Touraine)"]}
+
 ```
 
-## Prompt
+### Method Chaining
 
-System:
+...
 
-    You are an interpreter.
-    You will receive a method_name and parameters.
-    You will find an answer.
-    You will return a response in json_form in the return type given in `return_type`.
+### Recursion
 
-## Roadmap
-
-- [ ] Strong typing
+...
 
 ## References
 
 - [OpenAI API](https://platform.openai.com/docs/guides/text)
-
-## Message Passing
-
-Simple Explanation with Picture
-ruby
-a = "test123"
-
-a.reverse # => '321tset'
-Look closely at the colours\*\*.
-
-Summary with a diagram
-![alt text](https://i.sstatic.net/uOGv0.png)
-
-Example of Usage:
-
-Someone might say:
-
-The reverse method is "called" on a.
-
-What does it mean: let's break it down:
-
-What is the message?
-"reverse" is the message. you can think of messages as basically methods.
-What is the receiver?
-The string a is the receiver of the message.
-What is the sender?
-And the sender is the object where all of this is called. in this case, the object is self, which is main.
-\*\* (my condolences if you are unable to see the colours. Notice carefully: black vs blue vs red.):
-
-Prologue: "Inovking" Methods
-I very much dislike the use of expressions e.g. "invoking methods on on objects". This might be confusing ¯\(ツ)/¯ , especially if English is not your native language. What does it mean?

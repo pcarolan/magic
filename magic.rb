@@ -88,7 +88,3 @@ class OpenAIClient
     }
   end
 end
-
-magic = Magic.new
-result = magic.types_of_cheese_in_geo('france')
-puts result
