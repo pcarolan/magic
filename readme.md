@@ -13,6 +13,13 @@
 - If the method is called without a name it becomes anonymous.
 - Magic methods are recursive
 
+## Roadmap
+
+- [x] single method execution with arguments
+- [ ] method chaining with arguments
+- [ ] recursion
+- [ ] passing strong types between steps
+
 ## Try it
 
 ```bash
