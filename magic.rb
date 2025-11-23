@@ -25,6 +25,10 @@ class Magic
     })
   end
 
+  def respond_to_missing?(method_name, include_private = false)
+    true
+  end
+
   def send_to_openai(input:)
     # Send the input to the openai api
     # and return the response
@@ -32,7 +36,7 @@ class Magic
     puts prompt
     OpenAIClient.new.create_response(
       model: 'gpt-5.1',
-      input: MAIN_PROMPT + "\n" + input.to_s,
+      input: prompt,
       max_output_tokens: 1000,
       temperature: 0.7
     ).dig(:body, 'output', 0, 'content', 0, 'text')
