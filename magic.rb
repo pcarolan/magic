@@ -13,6 +13,7 @@ You are an interpreter.
 You will receive a method_name and parameters.
 You will find an answer.
 You will return a response in valid json.
+
 PROMPT
 
 class Magic
@@ -24,15 +25,15 @@ class Magic
     })
   end
 
-  def send_to_openai(self, input:)
-    # Example usage:
-    client = OpenAIClient.new
-    client.create_response(
+  def send_to_openai(input:)
+    # Send the input to the openai api
+    # and return the response
+    OpenAIClient.new.create_response(
       model: 'gpt-5.1',
-      input: input,
-      max_output_tokens: 100,
+      input: MAIN_PROMPT + "\n" + input.to_s,
+      max_output_tokens: 1000,
       temperature: 0.7
-    )
+    ).dig(:body, 'output', 0, 'content', 0, 'text')
   end
 
 end
@@ -89,5 +90,5 @@ end
 
 
 magic = Magic.new
-result = magic.get_stock_price('GOOGL', as_of_date: '2025-11-20')
+result = magic.types_of_cheese_in_geo('france')
 puts result

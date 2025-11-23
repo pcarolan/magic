@@ -14,7 +14,17 @@
 Examples:
 
 ```ruby
-get_stock_price('GOOGL', as_of_date='2025-11-20')
+magic.state_capital('Michigan', 'USA')
+# => {"country":"USA","state":"Michigan","capital":"Lansing"}
+
+magic.random_number_generator(0..100)
+# => {"result": 57}
+
+magic.types_of_cheese_in_geo('world')
+# => {"answer":["Cheddar","Mozzarella","Parmesan","Gouda","Brie","Camembert","Swiss (Emmental)","Gruyère","Feta","Blue cheese (e.g., Roquefort, Gorgonzola, Stilton)","Monterey Jack","Colby","Provolone","Edam","Havarti","Manchego","Ricotta","Cottage cheese","Paneer","Halloumi","Queso fresco","Queso Oaxaca","Mascarpone","Pecorino Romano","Asiago","Stilton","Roquefort","Gorgonzola","Taleggio","Fontina","Muenster","Limburger","Chèvre (goat cheese)","Cotija","Requeijão","Serra da Estrela","Kashkaval","Suluguni","Nabulsi","Akkawi"]}
+
+magic.types_of_cheese_in_geo('france')
+# => {"country":"france","types_of_cheese":["Brie","Camembert","Roquefort","Comté","Reblochon","Munster","Pont-l’Évêque","Bleu d’Auvergne","Cantal","Saint-Nectaire","Tomme de Savoie","Chèvre (various goat cheeses such as Crottin de Chavignol, Valençay, Sainte-Maure de Touraine)"]}
 ```
 
 ## Prompt
