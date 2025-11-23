@@ -40,6 +40,10 @@ System:
 
 - [ ] Strong typing
 
+## References
+
+- [OpenAI API](https://platform.openai.com/docs/guides/text)
+
 ## Message Passing
 
 Simple Explanation with Picture

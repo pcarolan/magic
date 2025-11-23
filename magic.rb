@@ -10,10 +10,10 @@ require 'openssl'
 
 MAIN_PROMPT = <<-PROMPT
 You are an interpreter.
-You will receive a method_name and parameters.
+You will receive a method_name and arguments (:args).
 You will find an answer.
 You will return a response in valid json.
-
+Message:
 PROMPT
 
 class Magic
@@ -28,6 +28,8 @@ class Magic
   def send_to_openai(input:)
     # Send the input to the openai api
     # and return the response
+    prompt = MAIN_PROMPT + "\n" + input.to_s
+    puts prompt
     OpenAIClient.new.create_response(
       model: 'gpt-5.1',
       input: MAIN_PROMPT + "\n" + input.to_s,
@@ -86,8 +88,6 @@ class OpenAIClient
     }
   end
 end
-
-
 
 magic = Magic.new
 result = magic.types_of_cheese_in_geo('france')
