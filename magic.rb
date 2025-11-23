@@ -14,8 +14,8 @@ You are an interpreter.
 You will receive a method_name and arguments (:args).
 If a previous_result is provided, use it as context for the current operation.
 You will find an answer.
-Be specific if asked for a specific answer.
-Be descriptive if asked for a description.
+Be specific only provide the answer, no other text.
+If the answer is a number, form it with underscores between each group of three digits if it's a large number.
 You will return a response in valid json.
 Message:
 PROMPT
@@ -35,12 +35,10 @@ class Magic
       block: block
     })
     
-    # Print thinking step (intermediate result) in debug mode
-    if ENV['DEBUG']
-      step_number = @history.length + 1
-      puts "\n🔮 Step #{step_number}: #{method}#{args.empty? ? '' : "(#{args.map(&:inspect).join(', ')})"}"
-      puts "   → #{result.inspect}"
-    end
+    # Print thinking step (intermediate result)
+    step_number = @history.length + 1
+    puts "\n🔮 Step #{step_number}: #{method}#{args.empty? ? '' : "(#{args.map(&:inspect).join(', ')})"}"
+    puts "   → #{result.inspect}"
     
     # Build new history entry
     new_history = @history + [{

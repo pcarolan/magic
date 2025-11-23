@@ -5,6 +5,7 @@
 1. Set `OPENAI_API_KEY` to a valid openai key
 2. Install ruby `>= ruby 3.3.4`
 3. Run tests `ruby test_magic.rb` to make sure everything's working properly
+4. Run an interactive session `irb` (from the root directory)
 
 ## About
 
