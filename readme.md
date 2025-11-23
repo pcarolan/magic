@@ -1,4 +1,4 @@
-# Magic
+# 🪄 Magic
 
 ## Setup
 
@@ -21,11 +21,14 @@ get_stock_price('GOOGL', as_of_date='2025-11-20')
 
 System:
 
-    You are a function interpreter.
+    You are an interpreter.
     You will receive a method_name and parameters.
+    You will find an answer.
     You will return a response in json_form in the return type given in `return_type`.
 
-object.method_name(arguments)
+## Roadmap
+
+- [ ] Strong typing
 
 ## Message Passing
 

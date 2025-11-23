@@ -8,14 +8,33 @@ require 'uri'
 require 'openssl'
 
 
+MAIN_PROMPT = <<-PROMPT
+You are an interpreter.
+You will receive a method_name and parameters.
+You will find an answer.
+You will return a response in valid json.
+PROMPT
+
 class Magic
   def method_missing(method, *args, &block)
-    {
-        method_name: method || 'anonymous',
-        args: args || [],
-        block: block || nil
-    }
+    send_to_openai(input: {
+      method_name: method || 'anonymous',
+      args: args || [],
+      block: block || nil
+    })
   end
+
+  def send_to_openai(self, input:)
+    # Example usage:
+    client = OpenAIClient.new
+    client.create_response(
+      model: 'gpt-5.1',
+      input: input,
+      max_output_tokens: 100,
+      temperature: 0.7
+    )
+  end
+
 end
 
 
@@ -67,43 +86,6 @@ class OpenAIClient
   end
 end
 
-# # Example usage:
-# client = OpenAIClient.new
-# result = client.create_response(
-#   model: 'gpt-5.1',
-#   input: 'Write a short bedtime story about a unicorn.',
-#   max_output_tokens: 1000,
-#   temperature: 0.7
-# )
-
-# if result[:status] == "200"
-#   body = result[:body]
-  
-#   # Extract the text from the response
-#   text = body.dig("output", 0, "content", 0, "text")
-  
-#   # Extract usage information
-#   usage = body["usage"]
-#   input_tokens = usage["input_tokens"]
-#   output_tokens = usage["output_tokens"]
-#   total_tokens = usage["total_tokens"]
-  
-#   # Print formatted output
-#   puts "\n" + "="*80
-#   puts "RESPONSE:"
-#   puts "="*80
-#   puts text
-#   puts "\n" + "="*80
-#   puts "TOKENS USED:"
-#   puts "="*80
-#   puts "  Input:  #{input_tokens}"
-#   puts "  Output: #{output_tokens}"
-#   puts "  Total:  #{total_tokens}"
-#   puts "="*80 + "\n"
-# else
-#   puts "Error: Status #{result[:status]}"
-#   puts result[:body]
-# end
 
 
 magic = Magic.new
