@@ -142,10 +142,3 @@ class OpenAIClient
     }
   end
 end
-
-magic = Magic.new
-result = result = magic.list_us_presidents
-    .take_first(5)
-    .get_birthplaces
-    .find_common_state
-puts result
