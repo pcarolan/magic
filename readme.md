@@ -1,5 +1,7 @@
 # 🪄 Magic
 
+[![Tests](https://github.com/pcarolan/magic/actions/workflows/test.yml/badge.svg)](https://github.com/pcarolan/magic/actions/workflows/test.yml)
+
 ## Setup
 
 1. Set `OPENAI_API_KEY` to a valid openai key
