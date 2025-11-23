@@ -278,77 +278,126 @@ class TestMagic < Minitest::Test
   # === method_missing Tests ===
 
   def test_method_missing_calls_send_to_openai
-    # Verify method_missing delegates to send_to_openai with correct structure
-    @magic.define_singleton_method(:send_to_openai) do |input:|
-      {
-        method_name: input[:method_name],
-        args: input[:args],
-        received: true
-      }
+    # Verify method_missing executes and returns Magic instance
+    mock_response = mock_openai_response(text: 'test result')
+    
+    mock_client = Minitest::Mock.new
+    mock_client.expect :create_response, mock_response do |**kwargs|
+      kwargs[:input].include?('test_method') &&
+      kwargs[:input].include?('arg1') &&
+      kwargs[:input].include?('arg2')
     end
 
-    result = @magic.test_method('arg1', 'arg2')
-    assert result[:received]
-    assert_equal :test_method, result[:method_name]
-    assert_equal ['arg1', 'arg2'], result[:args]
+    OpenAIClient.stub :new, mock_client do
+      result = @magic.test_method('arg1', 'arg2')
+      assert_instance_of Magic, result
+      assert_equal 'test result', result.to_s
+    end
+
+    mock_client.verify
   end
 
   def test_method_missing_with_no_arguments
     # Edge case: method called with no args
-    @magic.define_singleton_method(:send_to_openai) do |input:|
-      input
+    mock_response = mock_openai_response(text: 'no args result')
+    
+    mock_client = Minitest::Mock.new
+    mock_client.expect :create_response, mock_response do |**kwargs|
+      kwargs[:input].include?('some_method') &&
+      kwargs[:input].include?('"args":[]')
     end
 
-    result = @magic.some_method
-    assert_equal :some_method, result[:method_name]
-    assert_equal [], result[:args]
+    OpenAIClient.stub :new, mock_client do
+      result = @magic.some_method
+      assert_instance_of Magic, result
+      assert_equal 'no args result', result.to_s
+    end
+
+    mock_client.verify
   end
 
   def test_method_missing_with_nil_argument
     # Edge case: method called with nil
-    @magic.define_singleton_method(:send_to_openai) do |input:|
-      input
+    mock_response = mock_openai_response(text: 'nil arg result')
+    
+    mock_client = Minitest::Mock.new
+    mock_client.expect :create_response, mock_response do |**kwargs|
+      kwargs[:input].include?('some_method') &&
+      kwargs[:input].include?('null')  # JSON representation of nil
     end
 
-    result = @magic.some_method(nil)
-    assert_equal [nil], result[:args]
+    OpenAIClient.stub :new, mock_client do
+      result = @magic.some_method(nil)
+      assert_instance_of Magic, result
+    end
+
+    mock_client.verify
   end
 
   def test_method_missing_with_block
-    @magic.define_singleton_method(:send_to_openai) do |input:|
-      input
+    # Test that blocks are captured (even though they're not sent to API)
+    mock_response = mock_openai_response(text: 'block result')
+    
+    mock_client = Minitest::Mock.new
+    mock_client.expect :create_response, mock_response do |**kwargs|
+      kwargs[:input].include?('some_method')
     end
 
-    block_passed = proc { "test block" }
-    result = @magic.some_method(&block_passed)
-    
-    assert_equal :some_method, result[:method_name]
-    assert_equal block_passed, result[:block]
+    OpenAIClient.stub :new, mock_client do
+      block_passed = proc { "test block" }
+      result = @magic.some_method(&block_passed)
+      
+      assert_instance_of Magic, result
+      # Verify block was captured in history
+      assert_equal block_passed, result.instance_variable_get(:@history)[0][:block]
+    end
+
+    mock_client.verify
   end
 
   def test_method_missing_with_keyword_arguments
-    @magic.define_singleton_method(:send_to_openai) do |input:|
-      input
+    mock_response = mock_openai_response(text: '$150.00')
+    
+    mock_client = Minitest::Mock.new
+    mock_client.expect :create_response, mock_response do |**kwargs|
+      kwargs[:input].include?('get_stock_price') &&
+      kwargs[:input].include?('GOOGL') &&
+      kwargs[:input].include?('as_of_date')
     end
 
-    result = @magic.get_stock_price('GOOGL', as_of_date: '2025-11-20')
-    
-    assert_equal :get_stock_price, result[:method_name]
-    assert_equal ['GOOGL', {as_of_date: '2025-11-20'}], result[:args]
+    OpenAIClient.stub :new, mock_client do
+      result = @magic.get_stock_price('GOOGL', as_of_date: '2025-11-20')
+      
+      assert_instance_of Magic, result
+      # Verify args were captured correctly in history
+      assert_equal ['GOOGL', {as_of_date: '2025-11-20'}], result.instance_variable_get(:@history)[0][:args]
+    end
+
+    mock_client.verify
   end
 
   def test_method_missing_with_mixed_arguments
     # Test positional + keyword + block
-    @magic.define_singleton_method(:send_to_openai) do |input:|
-      input
+    mock_response = mock_openai_response(text: 'complex result')
+    
+    mock_client = Minitest::Mock.new
+    mock_client.expect :create_response, mock_response do |**kwargs|
+      kwargs[:input].include?('complex_method') &&
+      kwargs[:input].include?('pos1') &&
+      kwargs[:input].include?('key1')
     end
 
-    block = proc { "block" }
-    result = @magic.complex_method('pos1', 'pos2', key1: 'val1', key2: 'val2', &block)
-    
-    assert_equal :complex_method, result[:method_name]
-    assert_equal ['pos1', 'pos2', {key1: 'val1', key2: 'val2'}], result[:args]
-    assert_equal block, result[:block]
+    OpenAIClient.stub :new, mock_client do
+      block = proc { "block" }
+      result = @magic.complex_method('pos1', 'pos2', key1: 'val1', key2: 'val2', &block)
+      
+      assert_instance_of Magic, result
+      history = result.instance_variable_get(:@history)[0]
+      assert_equal ['pos1', 'pos2', {key1: 'val1', key2: 'val2'}], history[:args]
+      assert_equal block, history[:block]
+    end
+
+    mock_client.verify
   end
 
   # === send_to_openai Tests ===
@@ -481,6 +530,181 @@ class TestMagic < Minitest::Test
 
     mock_client.verify
   end
+
+  # === Chaining Tests ===
+
+  def test_method_missing_returns_magic_instance
+    # Verify that method_missing returns a Magic instance for chaining
+    mock_response = mock_openai_response(text: '42')
+    
+    mock_client = Minitest::Mock.new
+    mock_client.expect :create_response, mock_response do |**kwargs|
+      kwargs[:input].is_a?(String)
+    end
+
+    OpenAIClient.stub :new, mock_client do
+      result = @magic.random_number
+      assert_instance_of Magic, result
+    end
+
+    mock_client.verify
+  end
+
+  def test_chaining_two_methods
+    # Test chaining two method calls
+    first_response = mock_openai_response(text: '10')
+    second_response = mock_openai_response(text: '50')
+    
+    call_count = 0
+    mock_client = Minitest::Mock.new
+    
+    # First call
+    mock_client.expect :create_response, first_response do |**kwargs|
+      call_count += 1
+      call_count == 1 &&
+      kwargs[:input].is_a?(String) &&
+      !kwargs[:input].include?('Previous result')
+    end
+    
+    # Second call - should include previous result
+    mock_client.expect :create_response, second_response do |**kwargs|
+      call_count += 1
+      call_count == 2 &&
+      kwargs[:input].include?('Previous result: 10')
+    end
+
+    OpenAIClient.stub :new, mock_client do
+      result = @magic.random_number.multiply_by(5)
+      
+      assert_instance_of Magic, result
+      assert_equal '50', result.to_s
+    end
+
+    mock_client.verify
+  end
+
+  def test_chaining_three_methods
+    # Test chaining three method calls
+    responses = [
+      mock_openai_response(text: '10'),
+      mock_openai_response(text: '50'),
+      mock_openai_response(text: '60')
+    ]
+    
+    call_count = 0
+    mock_client = Minitest::Mock.new
+    
+    # Set up expectations for all three calls
+    3.times do |i|
+      mock_client.expect :create_response, responses[i] do |**kwargs|
+        call_count += 1
+        true
+      end
+    end
+
+    OpenAIClient.stub :new, mock_client do
+      result = @magic.random_number.multiply_by(5).add(10)
+      
+      assert_instance_of Magic, result
+      assert_equal '60', result.to_s
+    end
+
+    mock_client.verify
+  end
+
+  def test_chaining_passes_previous_result_as_context
+    # Verify that previous result is passed as context in chained calls
+    first_response = mock_openai_response(text: '{"number": 42}')
+    second_response = mock_openai_response(text: '{"doubled": 84}')
+    
+    mock_client = Minitest::Mock.new
+    
+    # First call - no previous result
+    mock_client.expect :create_response, first_response do |**kwargs|
+      !kwargs[:input].include?('Previous result')
+    end
+    
+    # Second call - should have previous result
+    mock_client.expect :create_response, second_response do |**kwargs|
+      kwargs[:input].include?('Previous result: {"number": 42}')
+    end
+
+    OpenAIClient.stub :new, mock_client do
+      result = @magic.generate_number.double_it
+      assert_equal '{"doubled": 84}', result.to_s
+    end
+
+    mock_client.verify
+  end
+
+  def test_result_method_returns_last_result
+    # Test that .result method returns the last result
+    mock_response = mock_openai_response(text: 'test result')
+    
+    mock_client = Minitest::Mock.new
+    mock_client.expect :create_response, mock_response do |**kwargs|
+      kwargs[:input].is_a?(String)
+    end
+
+    OpenAIClient.stub :new, mock_client do
+      result = @magic.some_method
+      assert_equal 'test result', result.result
+    end
+
+    mock_client.verify
+  end
+
+  def test_inspect_shows_history_length
+    # Test that inspect shows chain history
+    mock_response = mock_openai_response(text: 'result')
+    
+    mock_client = Minitest::Mock.new
+    2.times do
+      mock_client.expect :create_response, mock_response do |**kwargs|
+        kwargs[:input].is_a?(String)
+      end
+    end
+
+    OpenAIClient.stub :new, mock_client do
+      result = @magic.first_method.second_method
+      
+      inspect_string = result.inspect
+      assert_includes inspect_string, 'Magic'
+      assert_includes inspect_string, 'history=2 steps'
+    end
+
+    mock_client.verify
+  end
+
+  def test_to_s_returns_string_representation
+    # Test that to_s returns string representation of last result
+    mock_response = mock_openai_response(text: '{"value": 123}')
+    
+    mock_client = Minitest::Mock.new
+    mock_client.expect :create_response, mock_response do |**kwargs|
+      kwargs[:input].is_a?(String)
+    end
+
+    OpenAIClient.stub :new, mock_client do
+      result = @magic.get_value
+      assert_equal '{"value": 123}', result.to_s
+    end
+
+    mock_client.verify
+  end
+
+  def test_new_magic_instance_has_empty_history
+    # Test that a new Magic instance starts with empty history
+    magic = Magic.new
+    assert_equal [], magic.instance_variable_get(:@history)
+    assert_nil magic.instance_variable_get(:@last_result)
+  end
+
+  def test_magic_with_initial_result
+    # Test that Magic can be initialized with a result
+    magic = Magic.new(last_result: 'initial value')
+    assert_equal 'initial value', magic.result
+  end
 end
 
 class TestIntegration < Minitest::Test
@@ -519,7 +743,7 @@ class TestIntegration < Minitest::Test
     
     stub_http_request(mock_response) do
       result = magic.meaning_of_life
-      assert_equal '{"answer": 42}', result
+      assert_equal '{"answer": 42}', result.to_s
     end
   end
 
@@ -535,7 +759,8 @@ class TestIntegration < Minitest::Test
     stub_http_request(mock_response) do
       # When response.body is a String (not Hash), should return nil gracefully
       result = magic.some_method
-      assert_nil result
+      assert_instance_of Magic, result
+      assert_nil result.result
     end
   end
 
@@ -560,7 +785,7 @@ class TestIntegration < Minitest::Test
     
     stub_http_request(mock_response) do
       result = magic.state_capital('Michigan', 'USA')
-      assert_equal '{"capital": "Lansing"}', result
+      assert_equal '{"capital": "Lansing"}', result.to_s
     end
   end
 end

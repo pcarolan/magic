@@ -9,20 +9,40 @@ require 'openssl'
 
 
 MAIN_PROMPT = <<-PROMPT
+
 You are an interpreter.
 You will receive a method_name and arguments (:args).
+If a previous_result is provided, use it as context for the current operation.
 You will find an answer.
 You will return a response in valid json.
 Message:
 PROMPT
 
 class Magic
+  def initialize(history: [], last_result: nil)
+    @history = history
+    @last_result = last_result
+  end
+
   def method_missing(method, *args, &block)
-    send_to_openai(input: {
-      method_name: method || 'anonymous',
-      args: args || [],
-      block: block || nil
+    # Execute immediately
+    result = send_to_openai(input: {
+      method_name: method,
+      args: args,
+      previous_result: @last_result,  # Pass context from previous call
+      block: block
     })
+    
+    # Build new history entry
+    new_history = @history + [{
+      method: method,
+      args: args,
+      block: block,
+      result: result
+    }]
+    
+    # Return new Magic instance for chaining
+    Magic.new(history: new_history, last_result: result)
   end
 
   def respond_to_missing?(method_name, include_private = false)
@@ -32,7 +52,11 @@ class Magic
   def send_to_openai(input:)
     # Send the input to the openai api
     # and return the response
-    prompt = MAIN_PROMPT + "\n" + input.to_json
+    prompt = if input[:previous_result]
+      MAIN_PROMPT + "\nPrevious result: #{input[:previous_result]}\n" + input.to_json
+    else
+      MAIN_PROMPT + "\n" + input.to_json
+    end
     puts prompt if ENV['DEBUG']
     response = OpenAIClient.new.create_response(
       model: 'gpt-5.1',
@@ -45,6 +69,27 @@ class Magic
     return nil unless response[:body].is_a?(Hash)
     
     response.dig(:body, 'output', 0, 'content', 0, 'text')
+  end
+
+  # Auto-execute on string conversion
+  def to_s
+    @last_result.to_s
+  end
+
+  # Explicit result accessor
+  def result
+    @last_result
+  end
+
+  # For debugging - show chain history
+  def inspect
+    "#<Magic history=#{@history.length} steps, result=#{@last_result.inspect}>"
+  end
+
+  # Prevent Ruby from trying to convert Magic to an array
+  # This is needed for puts to work correctly
+  def to_ary
+    nil
   end
 
 end

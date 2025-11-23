@@ -30,6 +30,17 @@ irb(main):004> magic.name_of_us_president_in_year('1994')
 ### Single Method Calls
 
 ```ruby
+magic = Magic.new
+
+result = magic.random_number
+puts "Result type: #{result.class}"
+# => Result type: Magic
+puts "Result value (via .to_s): #{result.to_s}"
+# => Result value (via .to_s): 42
+puts "Result value (via .result): #{result.result}"
+# => Result value (via .result): 42
+
+# Other examples:
 magic.state_capital('Michigan', 'USA')
 # => {"country":"USA","state":"Michigan","capital":"Lansing"}
 
@@ -46,23 +57,56 @@ magic.types_of_cheese_in_geo('france')
 
 ### Method Chaining
 
-Magic enables method chaining a la ruby style
+Magic enables fluent API method chaining. Each method call makes an immediate API request and passes the previous result as context to the next call.
 
-Usage:
+#### Example 1: Chaining Two Methods
 
 ```ruby
-magic.weather_in('Paris').current_temperature
-# => {"city":"Paris","current_temperature_celsius":18}
-
-magic.us_presidents.first.birthplace
-# => {"president":"George Washington","birthplace":"Westmoreland County, Virginia"}
-
-magic.math.add(40, 2)
-# => {"result":42}
-
-magic.types_of_cheese_in_geo('europe').first.upcase
-# => "CHEDDAR"
+result = magic.random_number.multiply_by(5)
+puts "Result type: #{result.class}"
+# => Result type: Magic
+puts "Chained result: #{result.to_s}"
+# => Chained result: 210
+puts "History length: #{result.instance_variable_get(:@history).length} steps"
+# => History length: 2 steps
 ```
+
+#### Example 2: Chaining Three Methods
+
+```ruby
+result = magic.random_number.multiply_by(5).add(10)
+puts "Result: #{result}"  # Auto-calls to_s
+# => Result: 220
+puts "History: #{result.inspect}"
+# => History: #<Magic history=3 steps, result="220">
+```
+
+#### Example 3: Accessing Intermediate Results
+
+```ruby
+step1 = magic.get_number
+puts "Step 1 result: #{step1.result}"
+# => Step 1 result: 42
+
+step2 = step1.double_it
+puts "Step 2 result: #{step2.result}"
+# => Step 2 result: 84
+
+step3 = step2.add(100)
+puts "Step 3 result: #{step3.result}"
+# => Step 3 result: 184
+puts "Full chain inspect: #{step3.inspect}"
+# => Full chain inspect: #<Magic history=3 steps, result="184">
+```
+
+#### Key Features:
+
+- Each method call makes an immediate API request
+- Previous result is passed as context to next call
+- Magic instances are immutable (functional style)
+- Auto-executes on `puts`/string interpolation via `to_s`
+- Access raw result via `.result` method
+- View chain history via `.inspect` method
 
 ...
 
