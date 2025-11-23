@@ -19,9 +19,9 @@
 ## Roadmap
 
 - [x] single method execution with arguments
-- [ ] method chaining with arguments
-- [ ] recursion
+- [x] method chaining with arguments
 - [ ] passing strong types between steps
+- [ ] recursion
 
 ## Try it
 

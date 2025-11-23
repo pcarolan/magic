@@ -2,6 +2,9 @@ require 'minitest/autorun'
 require_relative 'magic'
 require 'json'
 
+# Suppress thinking output during tests
+ENV['MAGIC_TEST_MODE'] = 'true'
+
 # Helper module to reduce HTTP mocking duplication
 module HTTPMockHelpers
   def mock_http_response(code: '200', body: '{}')

@@ -35,10 +35,12 @@ class Magic
       block: block
     })
     
-    # Print thinking step (intermediate result)
-    step_number = @history.length + 1
-    puts "\n🔮 Step #{step_number}: #{method}#{args.empty? ? '' : "(#{args.map(&:inspect).join(', ')})"}"
-    puts "   → #{result.inspect}"
+    # Print thinking step (intermediate result) unless in test mode
+    unless ENV['MAGIC_TEST_MODE']
+      step_number = @history.length + 1
+      puts "\n🔮 Step #{step_number}: #{method}#{args.empty? ? '' : "(#{args.map(&:inspect).join(', ')})"}"
+      puts "   → #{result.inspect}"
+    end
     
     # Build new history entry
     new_history = @history + [{
@@ -86,6 +88,48 @@ class Magic
   # Explicit result accessor
   def result
     @last_result
+  end
+
+  # Pretty print the result (useful for JSON responses)
+  def pretty
+    require 'json'
+    parsed = JSON.parse(@last_result)
+    puts JSON.pretty_generate(parsed)
+    self  # Return self for chaining
+  rescue JSON::ParserError
+    puts @last_result
+    self
+  end
+
+  # Render the result in a human-friendly format
+  # Automatically detects arrays and prints them line by line
+  def render
+    require 'json'
+    parsed = JSON.parse(@last_result)
+    
+    # Handle common response patterns
+    if parsed.is_a?(Hash)
+      # Check for array values (like 'answer', 'result', 'data', 'items')
+      array_value = parsed['answer'] || parsed['result'] || parsed['data'] || parsed['items']
+      
+      if array_value.is_a?(Array)
+        array_value.each { |line| puts line }
+      else
+        # If no array found, pretty print the whole thing
+        puts JSON.pretty_generate(parsed)
+      end
+    elsif parsed.is_a?(Array)
+      # Direct array response
+      parsed.each { |line| puts line }
+    else
+      # Scalar value
+      puts parsed
+    end
+    
+    self  # Return self for chaining
+  rescue JSON::ParserError
+    puts @last_result
+    self
   end
 
   # For debugging - show chain history
