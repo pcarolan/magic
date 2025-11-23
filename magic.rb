@@ -11,9 +11,9 @@ require 'openssl'
 class Magic
   def method_missing(method, *args, &block)
     {
-        method_name: method,
-        args: args,
-        block: block
+        method_name: method || 'anonymous',
+        args: args || [],
+        block: block || nil
     }
   end
 end

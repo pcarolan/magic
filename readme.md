@@ -16,3 +16,5 @@ Examples:
 ```ruby
 get_stock_price('GOOGL', as_of_date='2025-11-20')
 ```
+
+If the method is called without a name it becomes anonymous.
