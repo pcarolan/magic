@@ -144,5 +144,5 @@ class OpenAIClient
 end
 
 magic = Magic.new
-result = magic.places_to_eat_in('petoskey')
+result = magic.random_number(0..10).multiply_by(5).add(10)
 puts result
