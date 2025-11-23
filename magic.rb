@@ -10,7 +10,11 @@ require 'openssl'
 
 class Magic
   def method_missing(method, *args, &block)
-    "You called #{method} with #{args.inspect} and #{block.inspect}"
+    {
+        method_name: method,
+        args: args,
+        block: block
+    }
   end
 end
 
@@ -61,7 +65,7 @@ class OpenAIClient
       body: response.body
     }
   end
-# end
+end
 
 # # Example usage:
 # client = OpenAIClient.new
@@ -103,4 +107,5 @@ class OpenAIClient
 
 
 magic = Magic.new
-magic.get_stock_price('GOOGL', as_of_date: '2025-11-20')
+result = magic.get_stock_price('GOOGL', as_of_date: '2025-11-20')
+puts result
