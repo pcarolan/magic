@@ -9,15 +9,17 @@ require 'openssl'
 
 
 MAIN_PROMPT = <<-PROMPT
+You are an interpreter that executes method calls.
+Given a method name and arguments, return ONLY the direct answer.
 
-You are an interpreter.
-You will receive a method_name and arguments (:args).
-If a previous_result is provided, use it as context for the current operation.
-You will find an answer.
-Be specific only provide the answer, no other text.
-If the answer is a number, form it with underscores between each group of three digits if it's a large number.
-You will return a response in valid json.
-Message:
+CRITICAL: Your response must be ONLY the answer itself. 
+- NO JSON
+- NO metadata  
+- NO labels like "quote:" or "answer:"
+- NO wrapping of any kind
+- Just the raw content
+
+For example, if asked for a quote, respond with ONLY the quote text itself.
 PROMPT
 
 class Magic
@@ -59,13 +61,15 @@ class Magic
   end
 
   def send_to_openai(input:)
-    # Send the input to the openai api
-    # and return the response
-    prompt = if input[:previous_result]
-      MAIN_PROMPT + "\nPrevious result: #{input[:previous_result]}\n" + input.to_json
-    else
-      MAIN_PROMPT + "\n" + input.to_json
-    end
+    # Format args in a readable way
+    args_str = input[:args].map { |a| a.is_a?(Hash) ? a.map { |k,v| "#{k}: #{v}" }.join(', ') : a.inspect }.join(', ')
+    
+    # Build the prompt
+    prompt = MAIN_PROMPT + "\n\n"
+    prompt += "Previous context: #{input[:previous_result]}\n\n" if input[:previous_result]
+    prompt += "Method: #{input[:method_name]}"
+    prompt += "(#{args_str})" unless input[:args].empty?
+    
     puts prompt if ENV['DEBUG']
     response = OpenAIClient.new.create_response(
       model: 'gpt-5.1',
@@ -81,87 +85,26 @@ class Magic
   end
 
   # Auto-execute on string conversion
-  # Parses JSON and extracts the content from common wrapper keys
   def to_s
-    return '' if @last_result.nil?
-    
-    begin
-      parsed = JSON.parse(@last_result)
-      
-      if parsed.is_a?(Hash)
-        # Extract from common wrapper keys: result, answer, data, content, text
-        parsed['result'] || parsed['answer'] || parsed['data'] || 
-        parsed['content'] || parsed['text'] || @last_result.to_s
-      else
-        parsed.to_s
-      end
-    rescue JSON::ParserError, TypeError => e
-      @last_result.to_s
-    end
+    @last_result.to_s
   end
 
-  # Explicit result accessor (returns raw JSON string)
+  # Explicit result accessor
   def result
     @last_result
   end
 
-  # Extract just the value from the JSON wrapper
-  # Use this to get the clean content without {"result": ...} wrapper
-  def value
-    return nil if @last_result.nil?
-    
-    parsed = JSON.parse(@last_result)
-    if parsed.is_a?(Hash)
-      parsed['result'] || parsed['answer'] || parsed['data'] || 
-      parsed['content'] || parsed['text'] || parsed
-    else
-      parsed
-    end
-  rescue JSON::ParserError
-    @last_result
-  end
+  # Alias for result (for backwards compatibility)
+  alias_method :value, :result
 
-  # Pretty print the result (useful for JSON responses)
-  def pretty
-    require 'json'
-    parsed = JSON.parse(@last_result)
-    puts JSON.pretty_generate(parsed)
-    self  # Return self for chaining
-  rescue JSON::ParserError
-    puts @last_result
-    self
-  end
-
-  # Render the result in a human-friendly format
-  # Automatically detects arrays and prints them line by line
+  # Print the result
   def render
-    require 'json'
-    parsed = JSON.parse(@last_result)
-    
-    # Handle common response patterns
-    if parsed.is_a?(Hash)
-      # Check for array values (like 'answer', 'result', 'data', 'items')
-      array_value = parsed['answer'] || parsed['result'] || parsed['data'] || parsed['items']
-      
-      if array_value.is_a?(Array)
-        array_value.each { |line| puts line }
-      else
-        # If no array found, pretty print the whole thing
-        puts JSON.pretty_generate(parsed)
-      end
-    elsif parsed.is_a?(Array)
-      # Direct array response
-      parsed.each { |line| puts line }
-    else
-      # Scalar value
-      puts parsed
-    end
-    
-    self  # Return self for chaining
-  rescue JSON::ParserError
     puts @last_result
-    self
+    self  # Return self for chaining
   end
+
+  # Alias for render
+  alias_method :pretty, :render
 
   # For debugging - show chain history
   def inspect

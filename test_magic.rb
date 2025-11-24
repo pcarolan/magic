@@ -306,8 +306,7 @@ class TestMagic < Minitest::Test
     
     mock_client = Minitest::Mock.new
     mock_client.expect :create_response, mock_response do |**kwargs|
-      kwargs[:input].include?('some_method') &&
-      kwargs[:input].include?('"args":[]')
+      kwargs[:input].include?('Method: some_method')
     end
 
     OpenAIClient.stub :new, mock_client do
@@ -325,8 +324,7 @@ class TestMagic < Minitest::Test
     
     mock_client = Minitest::Mock.new
     mock_client.expect :create_response, mock_response do |**kwargs|
-      kwargs[:input].include?('some_method') &&
-      kwargs[:input].include?('null')  # JSON representation of nil
+      kwargs[:input].include?('Method: some_method(nil)')
     end
 
     OpenAIClient.stub :new, mock_client do
@@ -520,7 +518,7 @@ class TestMagic < Minitest::Test
     mock_client = Minitest::Mock.new
     mock_client.expect :create_response, mock_response do |**kwargs|
       kwargs[:input].include?('interpreter') &&
-      kwargs[:input].include?('method_name')
+      kwargs[:input].include?('Method: test')
     end
 
     OpenAIClient.stub :new, mock_client do
@@ -566,14 +564,14 @@ class TestMagic < Minitest::Test
       call_count += 1
       call_count == 1 &&
       kwargs[:input].is_a?(String) &&
-      !kwargs[:input].include?('Previous result')
+      !kwargs[:input].include?('Previous context')
     end
     
     # Second call - should include previous result
     mock_client.expect :create_response, second_response do |**kwargs|
       call_count += 1
       call_count == 2 &&
-      kwargs[:input].include?('Previous result: 10')
+      kwargs[:input].include?('Previous context: 10')
     end
 
     OpenAIClient.stub :new, mock_client do
@@ -624,12 +622,12 @@ class TestMagic < Minitest::Test
     
     # First call - no previous result
     mock_client.expect :create_response, first_response do |**kwargs|
-      !kwargs[:input].include?('Previous result')
+      !kwargs[:input].include?('Previous context')
     end
     
     # Second call - should have previous result
     mock_client.expect :create_response, second_response do |**kwargs|
-      kwargs[:input].include?('Previous result: {"number": 42}')
+      kwargs[:input].include?('Previous context: {"number": 42}')
     end
 
     OpenAIClient.stub :new, mock_client do
@@ -717,7 +715,7 @@ class TestIntegration < Minitest::Test
     assert defined?(MAIN_PROMPT)
     assert_kind_of String, MAIN_PROMPT
     assert_includes MAIN_PROMPT, 'interpreter'
-    assert_includes MAIN_PROMPT, 'json'
+    assert_includes MAIN_PROMPT, 'answer'
   end
 
   def test_main_prompt_is_not_empty

@@ -3,24 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>Magic</title>
-    <style>
-        .poem {
-            font-family: Georgia, serif;
-            font-style: italic;
-            line-height: 1.6;
-            white-space: pre-line;
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 20px;
-            background: #f9f9f9;
-            border-left: 3px solid #ccc;
-        }
-    </style>
 </head>
-<body>
-    <div class="poem">
-        <h1>Author says</h1>
-        <%= @magic.quote(author: 'Oscar Wilde', book: 'dorian gray').result %>
-    </div>
-</body>
+<%= @magic.generate_html_code(
+    tag: 'body', 
+    theme: 'teach me to fly fish'
+) %>
 </html>
