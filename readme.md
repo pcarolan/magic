@@ -13,8 +13,6 @@
 
 - Magic let's us call any function and get a pretty good answer.
 - Magic methods can be chained together.
-- If the method is called without a name it becomes anonymous.
-- Magic methods are recursive
 
 ## Roadmap
 
