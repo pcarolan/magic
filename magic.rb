@@ -81,12 +81,43 @@ class Magic
   end
 
   # Auto-execute on string conversion
+  # Parses JSON and extracts the content from common wrapper keys
   def to_s
-    @last_result.to_s
+    return '' if @last_result.nil?
+    
+    begin
+      parsed = JSON.parse(@last_result)
+      
+      if parsed.is_a?(Hash)
+        # Extract from common wrapper keys: result, answer, data, content, text
+        parsed['result'] || parsed['answer'] || parsed['data'] || 
+        parsed['content'] || parsed['text'] || @last_result.to_s
+      else
+        parsed.to_s
+      end
+    rescue JSON::ParserError, TypeError => e
+      @last_result.to_s
+    end
   end
 
-  # Explicit result accessor
+  # Explicit result accessor (returns raw JSON string)
   def result
+    @last_result
+  end
+
+  # Extract just the value from the JSON wrapper
+  # Use this to get the clean content without {"result": ...} wrapper
+  def value
+    return nil if @last_result.nil?
+    
+    parsed = JSON.parse(@last_result)
+    if parsed.is_a?(Hash)
+      parsed['result'] || parsed['answer'] || parsed['data'] || 
+      parsed['content'] || parsed['text'] || parsed
+    else
+      parsed
+    end
+  rescue JSON::ParserError
     @last_result
   end
 
