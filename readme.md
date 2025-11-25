@@ -1,24 +1,24 @@
 # 🪄 Magic
 
+Object-oriented LLM assistant: call **any** method and get an answer from the `void`, chain calls, get structured answers — Ruby-only.
+
 [![Tests](https://github.com/pcarolan/magic/actions/workflows/test.yml/badge.svg)](https://github.com/pcarolan/magic/actions/workflows/test.yml)
 
 ## Setup
 
 1. Set `OPENAI_API_KEY` to a valid openai key
-2. Install ruby `>= ruby 3.3.4`
-3. Run tests `ruby test_magic.rb` to make sure everything's working properly
-4. Run an interactive session `irb` (from the root directory)
+1. Install ruby `>= ruby 3.3.4` (that's it! no other dependencies)
 
-## About
+## Usage
 
-- Magic let's us call any function and get a pretty good answer.
-- Magic methods can be chained together.
+1. Run tests `ruby test_magic.rb` to make sure everything's working properly
+1. Run an interactive session `irb` (from the root directory)
 
 ## Roadmap
 
 - [x] single method execution with arguments
 - [x] method chaining with arguments
-- [ ] passing strong types between steps
+- [ ] strong types
 - [ ] recursion
 
 ## Try it
