@@ -1,6 +1,6 @@
 # 🪄 Magic
 
-Object-oriented LLM assistant: call **any** method and get an answer from the `void`, chain calls, get structured answers — Ruby-only.
+Object-oriented LLM: call, chain or loop **any** method (existant or nonexistant) — Ruby-only.
 
 [![Tests](https://github.com/pcarolan/magic/actions/workflows/test.yml/badge.svg)](https://github.com/pcarolan/magic/actions/workflows/test.yml)
 
