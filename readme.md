@@ -16,10 +16,11 @@ OOLLM: Think it, call it, chain it: Magic lets you call any method and get insta
 
 ## Roadmap
 
-- [x] single method execution with arguments
-- [x] method chaining with arguments
+- [x] single method execution with and without arguments
+- [x] method chaining with and without arguments
 - [ ] strong types
 - [ ] recursion
+- [ ] caching
 
 ## Try it
 
