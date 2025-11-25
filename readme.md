@@ -1,6 +1,6 @@
 # 🪄 Magic
 
-OOLLM: Think it, call it, chain it: Magic lets you call any method and get instant LLM answers using fluent Ruby.
+OOLLM: Think it, call it, chain it: Magic lets you call and compose any method you can think of using fluent Ruby.
 
 [![Tests](https://github.com/pcarolan/magic/actions/workflows/test.yml/badge.svg)](https://github.com/pcarolan/magic/actions/workflows/test.yml)
 
@@ -56,7 +56,6 @@ result.class
 @magic.state_capital('Michigan', 'USA')
 => Lansing
 
-
 @magic.types_of_cheese_in_geo('world')
 => Cheddar, Mozzarella, Parmesan, Brie, Gouda, Swiss, Blue, Feta, Provolone, Monterey Jack, Camembert, Colby, Havarti, Manchego, Ricotta, Gorgonzola, Gruyère, Roquefort, Emmental, Asiago
 
@@ -80,7 +79,6 @@ Magic enables fluent API method chaining. Each method call makes an immediate AP
 🔮 Step 2: multiply_by(5)
    → "1355"
 => 1355
-
 
 puts "History length: #{result.instance_variable_get(:@history).length} steps"
 # => History length: 2 steps
