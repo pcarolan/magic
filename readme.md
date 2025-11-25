@@ -29,11 +29,11 @@ $ irb
 DEBUG is set to true
 magic is ready 🪄, type `@magic = Magic.new` to get started
 
->> @magic.president_in_year(year: 1994, country: 'usa')
+>> @magic.emoji_getter('a happy camper')
 
-🔮 Step 1: president_in_year({year: 1994, country: "usa"})
-   → "Bill Clinton"
-=> Bill Clinton
+🔮 Step 1: emoji_getter("a happy camper")
+   → "🏕️"
+=> 🏕️
 
 ```
 
