@@ -14,47 +14,6 @@ OOLLM: Think it, call it, chain it: Magic lets you call any method and get insta
 1. Run tests `ruby test_magic.rb` to make sure everything's working properly
 1. Run an interactive session `irb` (from the root directory)
 
-## Webserver / example page
-
-There is a tiny example webserver (`server.rb`) and an ERB template (`index.html.erb`) that demonstrates embedding `Magic` output into a web page.
-
-- server: `server.rb` — a small WEBrick server (port 3000) that renders `index.html.erb`.
-- template: `index.html.erb` — calls `@magic.generate_html(...)` and inserts the returned HTML into the page.
-
-How to run
-
-```bash
-# set your OpenAI key first (required)
-export OPENAI_API_KEY="sk-..."
-
-# start the example server
-ruby server.rb
-
-# then open http://localhost:3000 in your browser
-```
-
-What the template does
-
-The `index.html.erb` file demonstrates a simple call to the `Magic` object:
-
-```erb
-<%= @magic.generate_html(
-  tag: 'body', 
-  theme: 'wu tang clan', 
-  mode: 'dark',
-  generate_content: "fan fiction",
-  looks_like: "wu tang clan"
-) %>
-```
-
-The example passes a few options to `generate_html` — these are just demonstration inputs (tag, visual theme, content type and style). `Magic` will return HTML (a string) that the template inserts into the page. This is a minimal demo of using `Magic` results inside a web UI — no frameworks or external gems required (only Ruby standard library: WEBrick + ERB).
-
-![alt text](image.png)
-Notes
-
-- The server makes real LLM requests, so ensure `OPENAI_API_KEY` is set and be mindful of API usage.
-- This example is intentionally minimal — use it as a starting point for building a small experiment or integrating `Magic` into your own web view.
-
 ## Roadmap
 
 - [x] single method execution with arguments
@@ -220,6 +179,47 @@ result = magic.number(10)
 puts result
 # => {"result": 900}
 ```
+
+## Webserver / example page
+
+There is a tiny example webserver (`server.rb`) and an ERB template (`index.html.erb`) that demonstrates embedding `Magic` output into a web page.
+
+- server: `server.rb` — a small WEBrick server (port 3000) that renders `index.html.erb`.
+- template: `index.html.erb` — calls `@magic.generate_html(...)` and inserts the returned HTML into the page.
+
+How to run
+
+```bash
+# set your OpenAI key first (required)
+export OPENAI_API_KEY="sk-..."
+
+# start the example server
+ruby server.rb
+
+# then open http://localhost:3000 in your browser
+```
+
+What the template does
+
+The `index.html.erb` file demonstrates a simple call to the `Magic` object:
+
+```erb
+<%= @magic.generate_html(
+  tag: 'body', 
+  theme: 'wu tang clan', 
+  mode: 'dark',
+  generate_content: "fan fiction",
+  looks_like: "wu tang clan"
+) %>
+```
+
+The example passes a few options to `generate_html` — these are just demonstration inputs (tag, visual theme, content type and style). `Magic` will return HTML (a string) that the template inserts into the page. This is a minimal demo of using `Magic` results inside a web UI — no frameworks or external gems required (only Ruby standard library: WEBrick + ERB).
+
+![alt text](image.png)
+Notes
+
+- The server makes real LLM requests, so ensure `OPENAI_API_KEY` is set and be mindful of API usage.
+- This example is intentionally minimal — use it as a starting point for building a small experiment or integrating `Magic` into your own web view.
 
 #### How It Works
 
