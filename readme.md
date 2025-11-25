@@ -24,13 +24,16 @@ OOLLM: Think it, call it, chain it: Magic lets you call any method and get insta
 ## Try it
 
 ```bash
-> irb
-irb(main):002> require_relative 'magic'
-=> true
-irb(main):003> magic = Magic.new
-=> #<Magic:0x00000001204c8a30>
-irb(main):004> magic.name_of_us_president_in_year('1994')
-=> "{\"answer\":\"Bill Clinton\"}"
+$ irb
+DEBUG is set to true
+magic is ready 🪄, type `@magic = Magic.new` to get started
+
+>> @magic.president_in_year(year: 1994, country: 'usa')
+
+🔮 Step 1: president_in_year({year: 1994, country: "usa"})
+   → "Bill Clinton"
+=> Bill Clinton
+
 ```
 
 ## Examples
