@@ -29,11 +29,12 @@ $ irb
 DEBUG is set to true
 magic is ready 🪄, type `@magic = Magic.new` to get started
 
->> @magic.emoji_getter('a happy camper')
+>> @magic = Magic.new
+>> @magic.emoji_getter('happy camper')
 
-🔮 Step 1: emoji_getter("a happy camper")
-   → "🏕️"
-=> 🏕️
+🔮 Step 1: emoji_getter("happy camper")
+   → "🏕️🙂"
+=> 🏕️🙂
 
 ```
 
