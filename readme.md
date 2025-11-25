@@ -1,6 +1,6 @@
 # 🪄 Magic
 
-Object-oriented LLM: call, chain or loop **any** method (existant or nonexistant) — Ruby-only.
+OOLLM: Think it, call it, chain it: Magic lets you call any method and get instant LLM answers using fluent Ruby.
 
 [![Tests](https://github.com/pcarolan/magic/actions/workflows/test.yml/badge.svg)](https://github.com/pcarolan/magic/actions/workflows/test.yml)
 
