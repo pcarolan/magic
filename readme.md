@@ -1,6 +1,6 @@
 # 🪄 Magic
 
-OOLLM: Think it, call it, chain it: Magic lets you call any method and get instant LLM answers using fluent Ruby.
+OOLLM: Think it, call it, chain it: Magic lets you call and compose any method you can think of using fluent Ruby.
 
 [![Tests](https://github.com/pcarolan/magic/actions/workflows/test.yml/badge.svg)](https://github.com/pcarolan/magic/actions/workflows/test.yml)
 
