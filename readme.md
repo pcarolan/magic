@@ -38,28 +38,26 @@ irb(main):004> magic.name_of_us_president_in_year('1994')
 ### Single Method Calls
 
 ```ruby
-magic = Magic.new
+@magic = Magic.new
 
-result = magic.random_number
-puts "Result type: #{result.class}"
-# => Result type: Magic
-puts "Result value (via .to_s): #{result.to_s}"
-# => Result value (via .to_s): 42
-puts "Result value (via .result): #{result.result}"
-# => Result value (via .result): 42
+result = @magic.random_number(0..1000)
+result
+=> 746
+
+result.class
+=> Magic
+
 
 # Other examples:
-magic.state_capital('Michigan', 'USA')
-# => {"country":"USA","state":"Michigan","capital":"Lansing"}
+@magic.state_capital('Michigan', 'USA')
+=> Lansing
 
-magic.random_number_generator(0..100)
-# => {"result": 57}
 
-magic.types_of_cheese_in_geo('world')
-# => {"answer":["Cheddar","Mozzarella","Parmesan","Gouda","Brie","Camembert","Swiss (Emmental)","Gruyère","Feta","Blue cheese (e.g., Roquefort, Gorgonzola, Stilton)","Monterey Jack","Colby","Provolone","Edam","Havarti","Manchego","Ricotta","Cottage cheese","Paneer","Halloumi","Queso fresco","Queso Oaxaca","Mascarpone","Pecorino Romano","Asiago","Stilton","Roquefort","Gorgonzola","Taleggio","Fontina","Muenster","Limburger","Chèvre (goat cheese)","Cotija","Requeijão","Serra da Estrela","Kashkaval","Suluguni","Nabulsi","Akkawi"]}
+@magic.types_of_cheese_in_geo('world')
+=> Cheddar, Mozzarella, Parmesan, Brie, Gouda, Swiss, Blue, Feta, Provolone, Monterey Jack, Camembert, Colby, Havarti, Manchego, Ricotta, Gorgonzola, Gruyère, Roquefort, Emmental, Asiago
 
-magic.types_of_cheese_in_geo('france')
-# => {"country":"france","types_of_cheese":["Brie","Camembert","Roquefort","Comté","Reblochon","Munster","Pont-l’Évêque","Bleu d’Auvergne","Cantal","Saint-Nectaire","Tomme de Savoie","Chèvre (various goat cheeses such as Crottin de Chavignol, Valençay, Sainte-Maure de Touraine)"]}
+@magic.types_of_cheese_in_geo('france')
+=> Brie, Camembert, Roquefort, Comté, Reblochon, Munster, Emmental, Beaufort, Cantal, Saint-Nectaire, Pont-l’Évêque, Livarot, Chèvre (various goat cheeses), Tomme de Savoie, Bleu d’Auvergne, Bleu de Gex, Boursin, Neufchâtel, Ossau-Iraty, Morbier
 
 ```
 
@@ -70,11 +68,16 @@ Magic enables fluent API method chaining. Each method call makes an immediate AP
 #### Example 1: Chaining Two Methods
 
 ```ruby
-result = magic.random_number.multiply_by(5)
-puts "Result type: #{result.class}"
-# => Result type: Magic
-puts "Chained result: #{result.to_s}"
-# => Chained result: 210
+>> result = @magic.random_number.multiply_by(5)
+
+🔮 Step 1: random_number
+   → "271"
+
+🔮 Step 2: multiply_by(5)
+   → "1355"
+=> 1355
+
+
 puts "History length: #{result.instance_variable_get(:@history).length} steps"
 # => History length: 2 steps
 ```
@@ -82,29 +85,44 @@ puts "History length: #{result.instance_variable_get(:@history).length} steps"
 #### Example 2: Chaining Three Methods
 
 ```ruby
-result = magic.random_number.multiply_by(5).add(10)
-puts "Result: #{result}"  # Auto-calls to_s
-# => Result: 220
-puts "History: #{result.inspect}"
-# => History: #<Magic history=3 steps, result="220">
+>> result = @magic.random_number.multiply_by(5).add(10)
+
+🔮 Step 1: random_number
+   → "70628"
+
+🔮 Step 2: multiply_by(5)
+   → "353140"
+
+🔮 Step 3: add(10)
+   → "353150"
+=> 353150
 ```
 
 #### Example 3: Accessing Intermediate Results
 
 ```ruby
-step1 = magic.get_number
-puts "Step 1 result: #{step1.result}"
-# => Step 1 result: 42
+>> step1 = @magic.get_number
 
-step2 = step1.double_it
-puts "Step 2 result: #{step2.result}"
-# => Step 2 result: 84
+🔮 Step 1: get_number
+   → "42"
+=> 42
+>> puts "Step 1 result: #{step1.result}"
+Step 1 result: 42
 
-step3 = step2.add(100)
-puts "Step 3 result: #{step3.result}"
-# => Step 3 result: 184
-puts "Full chain inspect: #{step3.inspect}"
-# => Full chain inspect: #<Magic history=3 steps, result="184">
+>> step2 = step1.double_it
+
+🔮 Step 2: double_it
+   → "84"
+=> 84
+
+>> step3 = step2.add(100)
+
+🔮 Step 3: add(100)
+   → "184"
+=> 184
+
+>> puts "Full chain inspect: #{step3.inspect}"
+Full chain inspect: #<Magic history=3 steps, result="184">
 ```
 
 #### Key Features:
@@ -124,60 +142,88 @@ Magic enables powerful data transformation pipelines through its context-aware c
 
 ```ruby
 # Transform data through multiple steps
-result = magic.list_us_presidents
-  .take_first(5)
-  .get_birthplaces
-  .find_common_state
+>> result = @magic.list_us_presidents
+>>   .take_first(5)
+>>   .get_birthplaces
+>>   .find_common_state
 
-# Each step in the pipeline:
-# 1. list_us_presidents → Returns list of presidents
-# 2. take_first(5) → Takes first 5 (receives previous list as context)
-# 3. get_birthplaces → Extracts birthplaces (receives filtered list)
-# 4. find_common_state → Finds most common state (receives birthplace data)
+🔮 Step 1: list_us_presidents
+   → "George Washington\nJohn Adams\nThomas Jefferson\nJames Madison\nJames Monroe\nJohn Quincy Adams\nAndrew Jackson\nMartin Van Buren\nWilliam Henry Harrison\nJohn Tyler\nJames K. Polk\nZachary Taylor\nMillard Fillmore\nFranklin Pierce\nJames Buchanan\nAbraham Lincoln\nAndrew Johnson\nUlysses S. Grant\nRutherford B. Hayes\nJames A. Garfield\nChester A. Arthur\nGrover Cleveland\nBenjamin Harrison\nGrover Cleveland\nWilliam McKinley\nTheodore Roosevelt\nWilliam Howard Taft\nWoodrow Wilson\nWarren G. Harding\nCalvin Coolidge\nHerbert Hoover\nFranklin D. Roosevelt\nHarry S. Truman\nDwight D. Eisenhower\nJohn F. Kennedy\nLyndon B. Johnson\nRichard Nixon\nGerald Ford\nJimmy Carter\nRonald Reagan\nGeorge H. W. Bush\nBill Clinton\nGeorge W. Bush\nBarack Obama\nDonald Trump\nJoe Biden"
 
-puts result
-# => {"most_common_state": "Virginia", "count": 8}
+🔮 Step 2: take_first(5)
+   → "George Washington\nJohn Adams\nThomas Jefferson\nJames Madison\nJames Monroe"
+
+🔮 Step 3: get_birthplaces
+   → "Westmoreland County, Virginia\nBraintree, Massachusetts\nShadwell, Virginia\nPort Conway, Virginia\nWestmoreland County, Virginia"
+
+🔮 Step 4: find_common_state
+   → "Virginia"
+=> Virginia
 ```
 
 #### Example 2: Nested Object Navigation
 
 ```ruby
 # Drill down through nested data structures
-result = magic.countries_in('Europe')
-  .get_details('France')
-  .largest_city
-  .population
+>> result = @magic.countries_in('Europe')
+>>   .get_details('France')
+>>   .largest_city
+>>   .population
 
-# Navigation path:
-# Europe → France → Paris → Population
-puts result
-# => {"city": "Paris", "population": 2165423}
+🔮 Step 1: countries_in("Europe")
+   → "Albania\nAndorra\nArmenia\nAustria\nAzerbaijan\nBelarus\nBelgium\nBosnia and Herzegovina\nBulgaria\nCroatia\nCyprus\nCzechia\nDenmark\nEstonia\nFinland\nFrance\nGeorgia\nGermany\nGreece\nHungary\nIceland\nIreland\nItaly\nKazakhstan\nKosovo\nLatvia\nLiechtenstein\nLithuania\nLuxembourg\nMalta\nMoldova\nMonaco\nMontenegro\nNetherlands\nNorth Macedonia\nNorway\nPoland\nPortugal\nRomania\nRussia\nSan Marino\nSerbia\nSlovakia\nSlovenia\nSpain\nSweden\nSwitzerland\nTurkey\nUkraine\nUnited Kingdom\nVatican City"
+
+🔮 Step 2: get_details("France")
+   → "Capital: Paris\nPopulation: ~68 million\nOfficial language: French\nGovernment: Unitary semi-presidential republic\nCurrency: Euro (€)\nArea: ~551,700 km² (metropolitan France)\nContinent/Region: Western Europe\nEU member: Yes (founding member)\nNotable: Largest country in the EU by area; major global center for culture, fashion, cuisine, and wine; key role in EU and international politics."
+
+🔮 Step 3: largest_city
+   → "Paris"
+
+🔮 Step 4: population
+   → "2165423"
+=> 2165423
 ```
 
 #### Example 3: Computational Pipelines
 
 ```ruby
 # Chain mathematical operations
-result = magic.factorial(5)
-  .multiply_by(2)
-  .add(10)
+>> result = @magic.factorial(5)
+>>   .multiply_by(2)
+>>   .add(10)
 
-# Transformation flow: 5! = 120 → 120 * 2 = 240 → 240 + 10 = 250
-puts result
-# => {"result": 250}
+🔮 Step 1: factorial(5)
+   → "120"
+
+🔮 Step 2: multiply_by(2)
+   → "240"
+
+🔮 Step 3: add(10)
+   → "250"
+=> 250
 ```
 
 #### Example 4: Context-Aware Operations
 
 ```ruby
 # Operations that can reference previous context
-result = magic.number(10)
-  .double_it      # 10 * 2 = 20
-  .add_previous   # 20 + 10 = 30 (LLM can access original context)
-  .square         # 30^2 = 900
+>> result = @magic.number(10)
+>>   .double_it      # 10 * 2 = 20
+>>   .add_previous   # 20 + 10 = 30 (LLM can access original context)
+>>   .square         # 30^2 = 900
 
-puts result
-# => {"result": 900}
+🔮 Step 1: number(10)
+   → "10"
+
+🔮 Step 2: double_it
+   → "20"
+
+🔮 Step 3: add_previous
+   → "20"
+
+🔮 Step 4: square
+   → "400"
+=> 400
 ```
 
 ## Webserver / example page
