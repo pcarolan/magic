@@ -118,7 +118,7 @@ puts "Full chain inspect: #{step3.inspect}"
 
 ### Pipeline Processing & Nested Data Navigation
 
-Magic enables powerful data transformation pipelines through its context-aware chaining. While not recursion in the traditional computer science sense (where a function calls itself), Magic's chaining allows for sequential transformations where each step receives context from previous operations.
+Magic enables powerful data transformation pipelines through its context-aware chaining. Magic's chaining allows for sequential transformations where each step receives context from previous operations.
 
 #### Example 1: Data Pipeline Processing
 
@@ -200,10 +200,6 @@ Magic's pipeline processing uses sequential execution with context passing:
    - **Receives context**: Gets previous result as input
    - **Passes forward**: Sends result to next step
    - **LLM-powered**: Intelligence comes from the LLM understanding data relationships
-
-#### Note on "Recursion"
-
-This is **not traditional recursion** (where a function calls itself). It's **sequential chaining** and **pipeline processing**. However, the LLM may internally use recursive reasoning to understand nested data structures, which is why this pattern is powerful for exploratory data navigation where you don't know the exact structure ahead of time!
 
 ## References
 
