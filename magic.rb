@@ -239,16 +239,9 @@ class Magic
     duration_ms = ((Time.now - start_time) * 1000).round(2)
     
     # Handle error responses where body is a String, not a Hash
+    # Note: Response logging is handled by OpenAIClient.create_response
     if response[:body].is_a?(Hash)
       llm_response = response.dig(:body, 'output', 0, 'content', 0, 'text')
-      
-      # Log response
-      @logger.log_response(
-        request_id: request_id,
-        status: response[:status],
-        response_length: llm_response ? llm_response.length : nil,
-        duration_ms: duration_ms
-      )
       
       return nil unless llm_response
       
@@ -337,24 +330,11 @@ class Magic
         )
         format_duration_ms = ((Time.now - format_start_time) * 1000).round(2)
         
+        # Note: Response logging is handled by OpenAIClient.create_response
         if format_response[:body].is_a?(Hash)
           formatted_result = format_response.dig(:body, 'output', 0, 'content', 0, 'text')
-          @logger.log_response(
-            request_id: format_request_id,
-            status: format_response[:status],
-            response_length: formatted_result ? formatted_result.length : nil,
-            duration_ms: format_duration_ms,
-            tool_executed: true
-          )
           formatted_result || tool_result[:output]
         else
-          @logger.log_response(
-            request_id: format_request_id,
-            status: format_response[:status],
-            duration_ms: format_duration_ms,
-            error: 'Invalid response format',
-            tool_executed: true
-          )
           nil
         end
       else
@@ -362,13 +342,7 @@ class Magic
         llm_response
       end
     else
-      # Log error response
-      @logger.log_response(
-        request_id: request_id,
-        status: response[:status],
-        duration_ms: duration_ms,
-        error: 'Response body is not a valid JSON hash'
-      )
+      # Note: Error response logging is handled by OpenAIClient.create_response
       nil
     end
   end
