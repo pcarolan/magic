@@ -150,10 +150,10 @@ class ToolExecutor
 end
 
 class Magic
-  def initialize(history: [], last_result: nil, logger: MagicLogger.new)
+  def initialize(history: [], last_result: nil, logger: nil)
     @history = history
     @last_result = last_result
-    @logger = logger
+    @logger = logger || MagicLogger.new
   end
 
   def generate_request_id
@@ -384,9 +384,9 @@ end
 
 
 class OpenAIClient
-  def initialize(api_key = ENV['OPENAI_API_KEY'], logger: MagicLogger.new, request_id: nil)
+  def initialize(api_key = ENV['OPENAI_API_KEY'], logger: nil, request_id: nil)
     @api_key = api_key
-    @logger = logger
+    @logger = logger || MagicLogger.new
     @request_id = request_id || "#{Time.now.to_f}-#{rand(1000000)}"
   end
 
