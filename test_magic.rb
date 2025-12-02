@@ -791,6 +791,283 @@ class TestIntegration < Minitest::Test
   end
 end
 
+class TestToolExecutor < Minitest::Test
+  def setup
+    @executor = ToolExecutor.new
+  end
+
+  def test_blacklisted_detects_dangerous_commands
+    assert @executor.blacklisted?('rm file.txt')
+    assert @executor.blacklisted?('sudo ls')
+    assert @executor.blacklisted?('chmod 777 file')
+    assert @executor.blacklisted?('kill 1234')
+    assert @executor.blacklisted?('rmdir /tmp')
+  end
+
+  def test_blacklisted_allows_safe_commands
+    refute @executor.blacklisted?('ls -la')
+    refute @executor.blacklisted?('cat file.txt')
+    refute @executor.blacklisted?('grep pattern file')
+    refute @executor.blacklisted?('echo hello')
+    refute @executor.blacklisted?('pwd')
+  end
+
+  def test_blacklisted_detects_output_redirection
+    assert @executor.blacklisted?('ls > file.txt')
+    assert @executor.blacklisted?('echo test >> file.txt')
+  end
+
+  def test_blacklisted_detects_pipes_to_dangerous_commands
+    assert @executor.blacklisted?('ls | rm')
+    assert @executor.blacklisted?('cat file | sudo rm')
+  end
+
+  def test_blacklisted_rejects_nil_and_empty
+    assert @executor.blacklisted?(nil)
+    assert @executor.blacklisted?('')
+    assert @executor.blacklisted?('   ')
+  end
+
+  def test_execute_runs_safe_commands
+    result = @executor.execute('echo "test output"')
+    assert result[:success]
+    assert_includes result[:output], 'test output'
+    assert_empty result[:error]
+  end
+
+  def test_execute_handles_command_errors
+    result = @executor.execute('false')
+    refute result[:success]
+    # error field contains stderr, not exit code
+    # For 'false' command, stderr is typically empty but command fails
+    assert_kind_of String, result[:error]
+  end
+
+  def test_execute_blocks_blacklisted_commands
+    result = @executor.execute('rm important_file.txt')
+    refute result[:success]
+    assert_includes result[:error], 'blacklisted'
+  end
+
+  def test_execute_handles_nonexistent_commands_gracefully
+    result = @executor.execute('nonexistent_command_xyz123')
+    refute result[:success]
+    assert result[:error].length > 0
+  end
+end
+
+class TestMagicToolExecution < Minitest::Test
+  include HTTPMockHelpers
+
+  def setup
+    @magic = Magic.new
+  end
+
+  def teardown
+    ENV.delete('DEBUG')
+  end
+
+  def test_tool_detection_in_llm_response
+    # LLM response indicating tool usage
+    tool_response = mock_openai_response(text: '[TOOL:bash] ls -la')
+    format_response = mock_openai_response(text: 'file1.txt\nfile2.txt')
+    
+    call_count = 0
+    mock_client = Minitest::Mock.new
+    
+    # First call - LLM requests tool
+    mock_client.expect :create_response, tool_response do |**kwargs|
+      call_count += 1
+      call_count == 1 && kwargs[:input].include?('Method:')
+    end
+    
+    # Second call - Format tool output
+    mock_client.expect :create_response, format_response do |**kwargs|
+      call_count += 1
+      call_count == 2 && kwargs[:input].include?('Tool output:')
+    end
+
+    OpenAIClient.stub :new, mock_client do
+      # Mock the actual command execution
+      ToolExecutor.stub :new, -> { 
+        executor = Minitest::Mock.new
+        executor.expect :blacklisted?, false, ['ls -la']
+        executor.expect :execute, { success: true, output: "file1.txt\nfile2.txt", error: '' }, ['ls -la']
+        executor
+      } do
+        result = @magic.list_files
+        assert_instance_of Magic, result
+        assert_equal 'file1.txt\nfile2.txt', result.to_s
+      end
+    end
+
+    mock_client.verify
+  end
+
+  def test_blacklisted_command_returns_error
+    tool_response = mock_openai_response(text: '[TOOL:bash] rm important_file.txt')
+    
+    mock_client = Minitest::Mock.new
+    mock_client.expect :create_response, tool_response do |**kwargs|
+      kwargs[:input].include?('Method:')
+    end
+
+    OpenAIClient.stub :new, mock_client do
+      ToolExecutor.stub :new, -> {
+        executor = Minitest::Mock.new
+        executor.expect :blacklisted?, true, ['rm important_file.txt']
+        executor
+      } do
+        result = @magic.delete_file('important_file.txt')
+        assert_instance_of Magic, result
+        assert_includes result.to_s, 'blacklisted'
+      end
+    end
+
+    mock_client.verify
+  end
+
+  def test_tool_execution_tracked_in_history
+    tool_response = mock_openai_response(text: '[TOOL:bash] pwd')
+    format_response = mock_openai_response(text: '/home/user')
+    
+    call_count = 0
+    mock_client = Minitest::Mock.new
+    
+    mock_client.expect :create_response, tool_response do |**kwargs|
+      call_count += 1
+      call_count == 1
+    end
+    
+    mock_client.expect :create_response, format_response do |**kwargs|
+      call_count += 1
+      call_count == 2
+    end
+
+    OpenAIClient.stub :new, mock_client do
+      ToolExecutor.stub :new, -> {
+        executor = Minitest::Mock.new
+        executor.expect :blacklisted?, false, ['pwd']
+        executor.expect :execute, { success: true, output: '/home/user', error: '' }, ['pwd']
+        executor
+      } do
+        result = @magic.get_current_directory
+        history = result.instance_variable_get(:@history)
+        
+        assert_equal 1, history.length
+        assert_equal true, history[0][:tool_used]
+        assert_equal 'pwd', history[0][:tool_command]
+      end
+    end
+
+    mock_client.verify
+  end
+
+  def test_non_tool_response_works_normally
+    # Normal LLM response without tool usage
+    normal_response = mock_openai_response(text: '42')
+    
+    mock_client = Minitest::Mock.new
+    mock_client.expect :create_response, normal_response do |**kwargs|
+      kwargs[:input].include?('Method:')
+    end
+
+    OpenAIClient.stub :new, mock_client do
+      result = @magic.random_number
+      assert_instance_of Magic, result
+      assert_equal '42', result.to_s
+      
+      # Verify no tool was used
+      history = result.instance_variable_get(:@history)
+      assert_equal false, history[0][:tool_used]
+      assert_nil history[0][:tool_command]
+    end
+
+    mock_client.verify
+  end
+
+  def test_tool_output_chaining
+    # First call uses tool, second call processes result
+    tool_response = mock_openai_response(text: '[TOOL:bash] echo "100"')
+    format_response = mock_openai_response(text: '100')
+    second_response = mock_openai_response(text: '200')
+    
+    call_count = 0
+    mock_client = Minitest::Mock.new
+    
+    # Tool request and format
+    mock_client.expect :create_response, tool_response do |**kwargs|
+      call_count += 1
+      call_count == 1
+    end
+    
+    mock_client.expect :create_response, format_response do |**kwargs|
+      call_count += 1
+      call_count == 2 && kwargs[:input].include?('Tool output:')
+    end
+    
+    # Second method call (chaining)
+    mock_client.expect :create_response, second_response do |**kwargs|
+      call_count += 1
+      call_count == 3 && kwargs[:input].include?('Previous context: 100')
+    end
+
+    OpenAIClient.stub :new, mock_client do
+      ToolExecutor.stub :new, -> {
+        executor = Minitest::Mock.new
+        executor.expect :blacklisted?, false, ['echo "100"']
+        executor.expect :execute, { success: true, output: "100\n", error: '' }, ['echo "100"']
+        executor
+      } do
+        result = @magic.get_number.double_it
+        assert_instance_of Magic, result
+        assert_equal '200', result.to_s
+        
+        # Verify both steps in history
+        history = result.instance_variable_get(:@history)
+        assert_equal 2, history.length
+        assert_equal true, history[0][:tool_used]
+        assert_equal false, history[1][:tool_used]
+      end
+    end
+
+    mock_client.verify
+  end
+
+  def test_tool_execution_failure_handled
+    tool_response = mock_openai_response(text: '[TOOL:bash] false')
+    error_format_response = mock_openai_response(text: 'Command failed: exit code 1')
+    
+    call_count = 0
+    mock_client = Minitest::Mock.new
+    
+    mock_client.expect :create_response, tool_response do |**kwargs|
+      call_count += 1
+      call_count == 1
+    end
+    
+    mock_client.expect :create_response, error_format_response do |**kwargs|
+      call_count += 1
+      call_count == 2 && kwargs[:input].include?('Tool execution failed')
+    end
+
+    OpenAIClient.stub :new, mock_client do
+      ToolExecutor.stub :new, -> {
+        executor = Minitest::Mock.new
+        executor.expect :blacklisted?, false, ['false']
+        executor.expect :execute, { success: false, output: '', error: '1' }, ['false']
+        executor
+      } do
+        result = @magic.failing_command
+        assert_instance_of Magic, result
+        assert_includes result.to_s, 'failed'
+      end
+    end
+
+    mock_client.verify
+  end
+end
+
 class TestIRBSingleton < Minitest::Test
   include HTTPMockHelpers
 

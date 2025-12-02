@@ -6,6 +6,7 @@ require 'net/http'
 require 'json'
 require 'uri'
 require 'openssl'
+require 'open3'
 
 
 MAIN_PROMPT = <<-PROMPT
@@ -20,7 +21,57 @@ CRITICAL: Your response must be ONLY the answer itself.
 - Just the raw content
 
 For example, if asked for a quote, respond with ONLY the quote text itself.
+
+TOOL USAGE: If you need to execute a system command to answer the question, respond with: [TOOL:bash] command_here
+After the tool executes, you will receive the output and should format it appropriately as your final answer.
 PROMPT
+
+class ToolExecutor
+  DANGEROUS_COMMANDS = %w[
+    rm sudo chmod chown dd mkfs fdisk shutdown reboot kill killall rmdir unlink
+  ].freeze
+
+  DANGEROUS_PATTERNS = [
+    />/,           # Output redirection
+    />>/,          # Append redirection
+    /\|\s*(rm|sudo|chmod|chown|dd|mkfs|fdisk|shutdown|reboot|kill|killall|rmdir|unlink)/i  # Pipes to dangerous commands
+  ].freeze
+
+  def blacklisted?(command)
+    return true if command.nil? || command.strip.empty?
+    
+    cmd_parts = command.strip.split(/\s+/)
+    first_word = cmd_parts.first.downcase
+    
+    # Check against dangerous commands
+    return true if DANGEROUS_COMMANDS.any? { |dangerous| first_word == dangerous }
+    
+    # Check against dangerous patterns
+    return true if DANGEROUS_PATTERNS.any? { |pattern| command.match?(pattern) }
+    
+    false
+  end
+
+  def execute(command)
+    return { success: false, output: '', error: 'Command is blacklisted for security reasons' } if blacklisted?(command)
+    
+    begin
+      stdout, stderr, status = Open3.capture3(command)
+      
+      {
+        success: status.success?,
+        output: stdout,
+        error: stderr
+      }
+    rescue => e
+      {
+        success: false,
+        output: '',
+        error: e.message
+      }
+    end
+  end
+end
 
 class Magic
   def initialize(history: [], last_result: nil)
@@ -29,13 +80,20 @@ class Magic
   end
 
   def method_missing(method, *args, &block)
-    # Execute immediately
-    result = send_to_openai(input: {
+    # Prepare input hash
+    input_hash = {
       method_name: method,
       args: args,
       previous_result: @last_result,  # Pass context from previous call
       block: block
-    })
+    }
+    
+    # Execute immediately
+    result = send_to_openai(input: input_hash)
+    
+    # Extract tool info if present
+    tool_used = input_hash[:tool_used] || false
+    tool_command = input_hash[:tool_command]
     
     # Print thinking step (intermediate result) unless in test mode
     unless ENV['MAGIC_TEST_MODE']
@@ -45,12 +103,16 @@ class Magic
     end
     
     # Build new history entry
-    new_history = @history + [{
+    history_entry = {
       method: method,
       args: args,
       block: block,
-      result: result
-    }]
+      result: result,
+      tool_used: tool_used,
+      tool_command: tool_command
+    }
+    
+    new_history = @history + [history_entry]
     
     # Return new Magic instance for chaining
     Magic.new(history: new_history, last_result: result)
@@ -81,7 +143,57 @@ class Magic
     # Handle error responses where body is a String, not a Hash
     return nil unless response[:body].is_a?(Hash)
     
-    response.dig(:body, 'output', 0, 'content', 0, 'text')
+    llm_response = response.dig(:body, 'output', 0, 'content', 0, 'text')
+    return nil unless llm_response
+    
+    # Check if LLM wants to use a tool
+    tool_match = llm_response.match(/\[TOOL:bash\]\s*(.+)/)
+    
+    if tool_match
+      command = tool_match[1].strip
+      executor = ToolExecutor.new
+      
+      # Check if command is blacklisted
+      if executor.blacklisted?(command)
+        return "Error: Command '#{command}' is blacklisted for security reasons."
+      end
+      
+      # Print tool usage
+      unless ENV['MAGIC_TEST_MODE']
+        puts "🔧 Tool: bash | Command: #{command}"
+      end
+      
+      # Execute the command
+      tool_result = executor.execute(command)
+      
+      # Store tool info for history tracking
+      input[:tool_used] = true
+      input[:tool_command] = command
+      input[:tool_result] = tool_result
+      
+      # Feed tool output back to LLM for formatting
+      if tool_result[:success]
+        format_prompt = "Tool output: #{tool_result[:output]}\n\nFormat this result appropriately as your final answer."
+      else
+        format_prompt = "Tool execution failed with error: #{tool_result[:error]}\n\nProvide an appropriate error message or alternative answer."
+      end
+      
+      # Make second LLM call to format the tool output
+      format_response = OpenAIClient.new.create_response(
+        model: 'gpt-5.1',
+        input: format_prompt,
+        max_output_tokens: 1000,
+        temperature: 0.7
+      )
+      
+      return nil unless format_response[:body].is_a?(Hash)
+      
+      formatted_result = format_response.dig(:body, 'output', 0, 'content', 0, 'text')
+      formatted_result || tool_result[:output]
+    else
+      # No tool usage, return response as-is
+      llm_response
+    end
   end
 
   # Auto-execute on string conversion
