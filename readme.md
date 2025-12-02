@@ -294,3 +294,5 @@ Magic's pipeline processing uses sequential execution with context passing:
 ## References
 
 - [OpenAI API](https://platform.openai.com/docs/guides/text)
+- [Writing a good Claude MD prompt](https://www.humanlayer.dev/blog/writing-a-good-claude-md)
+- 
