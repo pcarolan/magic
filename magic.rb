@@ -7,6 +7,7 @@ require 'json'
 require 'uri'
 require 'openssl'
 require 'open3'
+require 'time'
 
 
 MAIN_PROMPT = <<-PROMPT
@@ -25,6 +26,81 @@ For example, if asked for a quote, respond with ONLY the quote text itself.
 TOOL USAGE: If you need to execute a system command to answer the question, respond with: [TOOL:bash] command_here
 After the tool executes, you will receive the output and should format it appropriately as your final answer.
 PROMPT
+
+class MagicLogger
+  LOG_FILE = 'log.txt'
+  
+  def initialize(log_file: LOG_FILE)
+    @log_file = log_file
+    @mutex = Mutex.new
+  end
+
+  def log_request(request_id:, method_name:, args: [], model:, prompt_length:, max_tokens: nil, temperature: nil, tool_used: false, tool_command: nil)
+    log_entry = {
+      timestamp: Time.now.utc.iso8601,
+      level: 'INFO',
+      type: 'request',
+      request_id: request_id,
+      method_name: method_name,
+      args: args.map(&:to_s),
+      model: model,
+      prompt_length: prompt_length,
+      max_tokens: max_tokens,
+      temperature: temperature,
+      tool_used: tool_used,
+      tool_command: tool_command
+    }
+    
+    write_log(log_entry)
+  end
+
+  def log_response(request_id:, status:, response_length: nil, duration_ms: nil, error: nil, tool_executed: false)
+    log_entry = {
+      timestamp: Time.now.utc.iso8601,
+      level: error ? 'ERROR' : 'INFO',
+      type: 'response',
+      request_id: request_id,
+      status: status.to_s,
+      response_length: response_length,
+      duration_ms: duration_ms,
+      error: error,
+      tool_executed: tool_executed
+    }
+    
+    write_log(log_entry)
+  end
+
+  def log_tool_execution(request_id:, command:, success:, output_length: nil, error: nil, duration_ms: nil)
+    log_entry = {
+      timestamp: Time.now.utc.iso8601,
+      level: success ? 'INFO' : 'ERROR',
+      type: 'tool_execution',
+      request_id: request_id,
+      command: command,
+      success: success,
+      output_length: output_length,
+      error: error,
+      duration_ms: duration_ms
+    }
+    
+    write_log(log_entry)
+  end
+
+  private
+
+  def write_log(log_entry)
+    @mutex.synchronize do
+      File.open(@log_file, 'a') do |f|
+        f.puts(JSON.generate(log_entry))
+        f.flush
+      end
+    end
+  rescue => e
+    # Silently fail logging to avoid breaking main functionality
+    # Could optionally print to stderr in debug mode
+    STDERR.puts("Logging error: #{e.message}") if ENV['DEBUG']
+  end
+end
 
 class ToolExecutor
   DANGEROUS_COMMANDS = %w[
@@ -74,9 +150,14 @@ class ToolExecutor
 end
 
 class Magic
-  def initialize(history: [], last_result: nil)
+  def initialize(history: [], last_result: nil, logger: MagicLogger.new)
     @history = history
     @last_result = last_result
+    @logger = logger
+  end
+
+  def generate_request_id
+    "#{Time.now.to_f}-#{rand(1000000)}"
   end
 
   def method_missing(method, *args, &block)
@@ -114,8 +195,8 @@ class Magic
     
     new_history = @history + [history_entry]
     
-    # Return new Magic instance for chaining
-    Magic.new(history: new_history, last_result: result)
+    # Return new Magic instance for chaining (preserve logger)
+    Magic.new(history: new_history, last_result: result, logger: @logger)
   end
 
   def respond_to_missing?(method_name, include_private = false)
@@ -123,6 +204,9 @@ class Magic
   end
 
   def send_to_openai(input:)
+    # Generate request ID for correlation
+    request_id = generate_request_id
+    
     # Format args in a readable way
     args_str = input[:args].map { |a| a.is_a?(Hash) ? a.map { |k,v| "#{k}: #{v}" }.join(', ') : a.inspect }.join(', ')
     
@@ -133,66 +217,159 @@ class Magic
     prompt += "(#{args_str})" unless input[:args].empty?
     
     puts prompt if ENV['DEBUG']
-    response = OpenAIClient.new.create_response(
+    
+    # Log request
+    @logger.log_request(
+      request_id: request_id,
+      method_name: input[:method_name],
+      args: input[:args],
+      model: 'gpt-5.1',
+      prompt_length: prompt.length,
+      max_tokens: 1000,
+      temperature: 0.7
+    )
+    
+    start_time = Time.now
+    response = OpenAIClient.new(logger: @logger, request_id: request_id).create_response(
       model: 'gpt-5.1',
       input: prompt,
       max_output_tokens: 1000,
       temperature: 0.7
     )
+    duration_ms = ((Time.now - start_time) * 1000).round(2)
     
     # Handle error responses where body is a String, not a Hash
-    return nil unless response[:body].is_a?(Hash)
-    
-    llm_response = response.dig(:body, 'output', 0, 'content', 0, 'text')
-    return nil unless llm_response
-    
-    # Check if LLM wants to use a tool
-    tool_match = llm_response.match(/\[TOOL:bash\]\s*(.+)/)
-    
-    if tool_match
-      command = tool_match[1].strip
-      executor = ToolExecutor.new
+    if response[:body].is_a?(Hash)
+      llm_response = response.dig(:body, 'output', 0, 'content', 0, 'text')
       
-      # Check if command is blacklisted
-      if executor.blacklisted?(command)
-        return "Error: Command '#{command}' is blacklisted for security reasons."
-      end
-      
-      # Print tool usage
-      unless ENV['MAGIC_TEST_MODE']
-        puts "🔧 Tool: bash | Command: #{command}"
-      end
-      
-      # Execute the command
-      tool_result = executor.execute(command)
-      
-      # Store tool info for history tracking
-      input[:tool_used] = true
-      input[:tool_command] = command
-      input[:tool_result] = tool_result
-      
-      # Feed tool output back to LLM for formatting
-      if tool_result[:success]
-        format_prompt = "Tool output: #{tool_result[:output]}\n\nFormat this result appropriately as your final answer."
-      else
-        format_prompt = "Tool execution failed with error: #{tool_result[:error]}\n\nProvide an appropriate error message or alternative answer."
-      end
-      
-      # Make second LLM call to format the tool output
-      format_response = OpenAIClient.new.create_response(
-        model: 'gpt-5.1',
-        input: format_prompt,
-        max_output_tokens: 1000,
-        temperature: 0.7
+      # Log response
+      @logger.log_response(
+        request_id: request_id,
+        status: response[:status],
+        response_length: llm_response ? llm_response.length : nil,
+        duration_ms: duration_ms
       )
       
-      return nil unless format_response[:body].is_a?(Hash)
+      return nil unless llm_response
       
-      formatted_result = format_response.dig(:body, 'output', 0, 'content', 0, 'text')
-      formatted_result || tool_result[:output]
+      # Check if LLM wants to use a tool
+      tool_match = llm_response.match(/\[TOOL:bash\]\s*(.+)/)
+      
+      if tool_match
+        command = tool_match[1].strip
+        executor = ToolExecutor.new
+        
+        # Log tool request
+        @logger.log_request(
+          request_id: request_id,
+          method_name: input[:method_name],
+          args: input[:args],
+          model: 'gpt-5.1',
+          prompt_length: prompt.length,
+          max_tokens: 1000,
+          temperature: 0.7,
+          tool_used: true,
+          tool_command: command
+        )
+        
+        # Check if command is blacklisted
+        if executor.blacklisted?(command)
+          @logger.log_tool_execution(
+            request_id: request_id,
+            command: command,
+            success: false,
+            error: 'Command is blacklisted for security reasons'
+          )
+          return "Error: Command '#{command}' is blacklisted for security reasons."
+        end
+        
+        # Print tool usage
+        unless ENV['MAGIC_TEST_MODE']
+          puts "🔧 Tool: bash | Command: #{command}"
+        end
+        
+        # Execute the command
+        tool_start_time = Time.now
+        tool_result = executor.execute(command)
+        tool_duration_ms = ((Time.now - tool_start_time) * 1000).round(2)
+        
+        # Log tool execution
+        @logger.log_tool_execution(
+          request_id: request_id,
+          command: command,
+          success: tool_result[:success],
+          output_length: tool_result[:output] ? tool_result[:output].length : nil,
+          error: tool_result[:error],
+          duration_ms: tool_duration_ms
+        )
+        
+        # Store tool info for history tracking
+        input[:tool_used] = true
+        input[:tool_command] = command
+        input[:tool_result] = tool_result
+        
+        # Feed tool output back to LLM for formatting
+        if tool_result[:success]
+          format_prompt = "Tool output: #{tool_result[:output]}\n\nFormat this result appropriately as your final answer."
+        else
+          format_prompt = "Tool execution failed with error: #{tool_result[:error]}\n\nProvide an appropriate error message or alternative answer."
+        end
+        
+        # Make second LLM call to format the tool output
+        format_request_id = generate_request_id
+        @logger.log_request(
+          request_id: format_request_id,
+          method_name: "#{input[:method_name]}_format",
+          args: [],
+          model: 'gpt-5.1',
+          prompt_length: format_prompt.length,
+          max_tokens: 1000,
+          temperature: 0.7,
+          tool_used: false
+        )
+        
+        format_start_time = Time.now
+        format_response = OpenAIClient.new(logger: @logger, request_id: format_request_id).create_response(
+          model: 'gpt-5.1',
+          input: format_prompt,
+          max_output_tokens: 1000,
+          temperature: 0.7
+        )
+        format_duration_ms = ((Time.now - format_start_time) * 1000).round(2)
+        
+        if format_response[:body].is_a?(Hash)
+          formatted_result = format_response.dig(:body, 'output', 0, 'content', 0, 'text')
+          @logger.log_response(
+            request_id: format_request_id,
+            status: format_response[:status],
+            response_length: formatted_result ? formatted_result.length : nil,
+            duration_ms: format_duration_ms,
+            tool_executed: true
+          )
+          formatted_result || tool_result[:output]
+        else
+          @logger.log_response(
+            request_id: format_request_id,
+            status: format_response[:status],
+            duration_ms: format_duration_ms,
+            error: 'Invalid response format',
+            tool_executed: true
+          )
+          nil
+        end
+      else
+        # No tool usage, return response as-is
+        llm_response
+      end
     else
-      # No tool usage, return response as-is
-      llm_response
+      # Log error response
+      @logger.log_response(
+        request_id: request_id,
+        status: response[:status],
+        duration_ms: duration_ms,
+        error: 'Response body is not a valid JSON hash'
+      )
+      nil
     end
   end
 
@@ -233,8 +410,10 @@ end
 
 
 class OpenAIClient
-  def initialize(api_key = ENV['OPENAI_API_KEY'])
+  def initialize(api_key = ENV['OPENAI_API_KEY'], logger: MagicLogger.new, request_id: nil)
     @api_key = api_key
+    @logger = logger
+    @request_id = request_id || "#{Time.now.to_f}-#{rand(1000000)}"
   end
 
   def create_response(model:, input:, max_output_tokens: nil, temperature: nil)
@@ -266,16 +445,37 @@ class OpenAIClient
     request.body = JSON.generate(body)
     
     # Make the request
+    start_time = Time.now
     response = http.request(request)
+    duration_ms = ((Time.now - start_time) * 1000).round(2)
+    
+    parsed_body = begin
+      JSON.parse(response.body)
+    rescue JSON::ParserError
+      response.body
+    end
+    
+    # Log HTTP response
+    if parsed_body.is_a?(Hash)
+      output_text = parsed_body.dig('output', 0, 'content', 0, 'text')
+      @logger.log_response(
+        request_id: @request_id,
+        status: response.code,
+        response_length: output_text ? output_text.length : nil,
+        duration_ms: duration_ms
+      )
+    else
+      @logger.log_response(
+        request_id: @request_id,
+        status: response.code,
+        duration_ms: duration_ms,
+        error: 'JSON parse error'
+      )
+    end
     
     {
       status: response.code,
-      body: JSON.parse(response.body)
-    }
-  rescue JSON::ParserError
-    {
-      status: response.code,
-      body: response.body
+      body: parsed_body
     }
   end
 end
