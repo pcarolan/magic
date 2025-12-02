@@ -2,8 +2,19 @@ require_relative 'magic'
 require 'pp'
 
 DEBUG = true
-puts "DEBUG is set to #{DEBUG}"
-puts "magic is ready 🪄, type magic = Magic.new to get started"
+
+# Check if OpenAI API key is set
+api_key_set = ENV['OPENAI_API_KEY'] && !ENV['OPENAI_API_KEY'].empty?
+api_key_preview = api_key_set ? "#{ENV['OPENAI_API_KEY'][0..6]}..." : nil
+
+puts "\e[1;36m🪄 Magic\e[0m is ready! Type \e[1;33mmagic = Magic.new\e[0m to get started"
+if api_key_set
+  puts "\e[1;32m✓\e[0m OpenAI API key configured (\e[2m#{api_key_preview}\e[0m)"
+else
+  puts "\e[1;31m⚠\e[0m  OpenAI API key not set (set \e[1mOPENAI_API_KEY\e[0m environment variable)"
+end
+puts "\e[2mDEBUG mode: #{DEBUG}\e[0m"
+puts ""
 
 # IRB Configuration
 IRB.conf[:USE_COLORIZE] = true
