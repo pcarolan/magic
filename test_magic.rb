@@ -790,3 +790,156 @@ class TestIntegration < Minitest::Test
     end
   end
 end
+
+class TestIRBSingleton < Minitest::Test
+  include HTTPMockHelpers
+
+  def setup
+    # Clear any existing magic variable in TOPLEVEL_BINDING
+    begin
+      TOPLEVEL_BINDING.eval("magic = nil")
+    rescue
+      # Ignore if magic doesn't exist
+    end
+  end
+
+  def teardown
+    # Clean up
+    begin
+      TOPLEVEL_BINDING.eval("magic = nil")
+    rescue
+      # Ignore
+    end
+    ENV.delete('OPENAI_API_KEY') if ENV['OPENAI_API_KEY']&.include?('test')
+  end
+
+  def test_singleton_creation_in_toplevel_binding
+    # Test that we can create magic singleton in TOPLEVEL_BINDING
+    TOPLEVEL_BINDING.eval("magic = Magic.new")
+    
+    magic_instance = TOPLEVEL_BINDING.eval("magic")
+    assert_instance_of Magic, magic_instance
+  end
+
+  def test_singleton_is_accessible_in_binding
+    # Test that magic variable is accessible in a binding context
+    binding_obj = binding
+    binding_obj.eval("magic = Magic.new")
+    
+    magic_instance = binding_obj.eval("magic")
+    assert_instance_of Magic, magic_instance
+  end
+
+  def test_singleton_can_call_methods
+    # Test that the singleton magic instance can be used to call methods
+    mock_response = mock_openai_response(text: 'test result')
+    
+    mock_client = Minitest::Mock.new
+    mock_client.expect :create_response, mock_response do |**kwargs|
+      kwargs[:input].include?('test_method')
+    end
+
+    binding_obj = binding
+    binding_obj.eval("magic = Magic.new")
+
+    OpenAIClient.stub :new, mock_client do
+      result = binding_obj.eval("magic.test_method")
+      assert_instance_of Magic, result
+      assert_equal 'test result', result.to_s
+    end
+
+    mock_client.verify
+  end
+
+  def test_singleton_has_empty_history_initially
+    # Test that singleton starts with empty history
+    binding_obj = binding
+    binding_obj.eval("magic = Magic.new")
+    
+    magic_instance = binding_obj.eval("magic")
+    assert_equal [], magic_instance.instance_variable_get(:@history)
+    assert_nil magic_instance.instance_variable_get(:@last_result)
+  end
+
+  def test_singleton_supports_chaining
+    # Test that singleton supports method chaining
+    responses = [
+      mock_openai_response(text: '10'),
+      mock_openai_response(text: '20')
+    ]
+    
+    call_count = 0
+    mock_client = Minitest::Mock.new
+    
+    2.times do |i|
+      mock_client.expect :create_response, responses[i] do |**kwargs|
+        call_count += 1
+        true
+      end
+    end
+
+    binding_obj = binding
+    binding_obj.eval("magic = Magic.new")
+
+    OpenAIClient.stub :new, mock_client do
+      result = binding_obj.eval("magic.first_method.second_method")
+      assert_instance_of Magic, result
+      assert_equal '20', result.to_s
+      # Verify history has 2 steps
+      assert_equal 2, result.instance_variable_get(:@history).length
+    end
+
+    mock_client.verify
+  end
+
+  def test_irb_rc_hook_configuration
+    # Test that IRB.conf[:IRB_RC] hook is set up correctly
+    # This simulates what happens when IRB loads .irbrc
+    begin
+      require 'irb'
+    rescue LoadError
+      skip "IRB not available in test environment"
+    end
+    
+    # Create a mock IRB context
+    mock_context = Minitest::Mock.new
+    mock_workspace = Minitest::Mock.new
+    mock_binding = binding
+    
+    mock_workspace.expect :binding, mock_binding
+    mock_context.expect :workspace, mock_workspace
+    
+    # Set up the IRB hook as done in .irbrc
+    IRB.conf[:IRB_RC] = proc do |context|
+      context.workspace.binding.eval("magic = Magic.new")
+    end
+    
+    # Execute the hook
+    IRB.conf[:IRB_RC].call(mock_context)
+    
+    # Verify magic was created in the binding
+    magic_instance = mock_binding.eval("magic")
+    assert_instance_of Magic, magic_instance
+    
+    mock_context.verify
+    mock_workspace.verify
+  end
+
+  def test_singleton_independence
+    # Test that each binding gets its own magic instance (they're independent)
+    binding1 = binding
+    binding2 = binding
+    
+    binding1.eval("magic = Magic.new")
+    binding2.eval("magic = Magic.new")
+    
+    magic1 = binding1.eval("magic")
+    magic2 = binding2.eval("magic")
+    
+    # They should be different instances
+    refute_same magic1, magic2
+    # But both should be Magic instances
+    assert_instance_of Magic, magic1
+    assert_instance_of Magic, magic2
+  end
+end
